@@ -1,0 +1,6 @@
+{
+  "name": "CapCut",
+  "description": "Mobile video editor featuring multi-track timeline, AI effects, export controls, and pro editing tools.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
