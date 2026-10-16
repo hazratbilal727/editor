@@ -1,33 +1,23 @@
 package com.example.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -36,170 +26,132 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.example.ui.theme.CapCutSurface
 import com.example.ui.theme.CapCutTeal
-import com.example.ui.theme.CapCutTextDisabled
 import com.example.ui.theme.CapCutTextPrimary
 import com.example.ui.theme.CapCutTextSecondary
+import com.example.viewmodel.EditorUiState
 
 @Composable
 fun ExportDialog(
-  progress: Float,
-  isFinished: Boolean,
-  resolution: String,
-  onDismiss: () -> Unit,
-  onShare: (String) -> Unit
+  uiState: EditorUiState,
+  onDismiss: () -> Unit
 ) {
-  Dialog(onDismissRequest = onDismiss) {
-    Surface(
-      shape = RoundedCornerShape(16.dp),
-      color = Color(0xFF1E2026),
+  Dialog(onDismissRequest = {
+    if (uiState.isExportFinished) onDismiss()
+  }) {
+    Box(
       modifier = Modifier
+        .clip(RoundedCornerShape(16.dp))
+        .background(CapCutSurface)
+        .padding(24.dp)
         .fillMaxWidth()
-        .padding(horizontal = 8.dp)
-        .testTag("export_dialog_surface")
+        .testTag("export_progress_dialog"),
+      contentAlignment = Alignment.Center
     ) {
       Column(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.Center
       ) {
-        // Header
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.SpaceBetween,
-          verticalAlignment = Alignment.CenterVertically
-        ) {
+        if (!uiState.isExportFinished) {
+          // Exporting in progress
           Text(
-            text = if (isFinished) "Ready to Share" else "Exporting Video",
+            text = "Exporting Video...",
             color = CapCutTextPrimary,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold
           )
-          IconButton(
-            onClick = onDismiss,
-            modifier = Modifier.size(32.dp).testTag("export_dialog_close")
-          ) {
-            Icon(Icons.Default.Close, contentDescription = "Close", tint = CapCutTextSecondary)
-          }
-        }
-
-        if (!isFinished) {
-          // Progress State
           Spacer(modifier = Modifier.height(8.dp))
           Text(
-            text = "${(progress * 100).toInt()}%",
-            color = CapCutTeal,
-            fontSize = 42.sp,
-            fontWeight = FontWeight.Black
+            text = "${uiState.resolutionSetting.label} • ${uiState.resolutionSetting.fps} FPS • Offline Render",
+            color = CapCutTextSecondary,
+            fontSize = 12.sp
           )
+
+          Spacer(modifier = Modifier.height(24.dp))
 
           LinearProgressIndicator(
-            progress = { progress },
+            progress = { uiState.exportProgress },
             modifier = Modifier
               .fillMaxWidth()
-              .height(6.dp)
-              .clip(RoundedCornerShape(3.dp)),
+              .height(8.dp)
+              .clip(RoundedCornerShape(4.dp)),
             color = CapCutTeal,
-            trackColor = Color(0xFF2E313A)
+            trackColor = Color(0xFF2C2C34)
           )
 
+          Spacer(modifier = Modifier.height(16.dp))
+
           Text(
-            text = "Exporting at $resolution...\nDon't lock your screen or switch to other apps.",
+            text = "${(uiState.exportProgress * 100).toInt()}%",
+            color = CapCutTeal,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold
+          )
+
+          Spacer(modifier = Modifier.height(8.dp))
+
+          val statusMsg = when {
+            uiState.exportProgress < 0.3f -> "Encoding video frames..."
+            uiState.exportProgress < 0.7f -> "Applying transitions & color filters..."
+            uiState.exportProgress < 0.95f -> "Mixing AAC audio tracks..."
+            else -> "Finalizing video..."
+          }
+          Text(
+            text = statusMsg,
             color = CapCutTextSecondary,
-            fontSize = 12.sp,
-            textAlign = TextAlign.Center,
-            lineHeight = 16.sp
+            fontSize = 12.sp
           )
         } else {
-          // Finished State
+          // Export Finished
           Box(
             modifier = Modifier
               .size(64.dp)
               .clip(CircleShape)
-              .background(CapCutTeal),
+              .background(CapCutTeal.copy(alpha = 0.2f)),
             contentAlignment = Alignment.Center
           ) {
             Icon(
-              imageVector = Icons.Default.Check,
+              imageVector = Icons.Default.CheckCircle,
               contentDescription = "Success",
-              tint = Color.Black,
-              modifier = Modifier.size(36.dp)
+              tint = CapCutTeal,
+              modifier = Modifier.size(42.dp)
             )
           }
 
+          Spacer(modifier = Modifier.height(16.dp))
+
           Text(
-            text = "Saved to Device & Ready!",
+            text = "Export Complete!",
             color = CapCutTextPrimary,
-            fontSize = 16.sp,
+            fontSize = 18.sp,
             fontWeight = FontWeight.Bold
           )
 
-          // Share buttons
-          Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-          ) {
-            Button(
-              onClick = { onShare("TikTok") },
-              colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
-              modifier = Modifier
-                .fillMaxWidth()
-                .height(44.dp)
-                .clip(RoundedCornerShape(22.dp)),
-              shape = RoundedCornerShape(22.dp)
-            ) {
-              Text(
-                text = "Share to TikTok",
-                color = Color.White,
-                fontWeight = FontWeight.Bold
-              )
-            }
+          Spacer(modifier = Modifier.height(6.dp))
 
-            Row(
-              modifier = Modifier.fillMaxWidth(),
-              horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-              Button(
-                onClick = { onShare("Instagram") },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2C2F38)),
-                modifier = Modifier
-                  .weight(1f)
-                  .height(40.dp),
-                shape = RoundedCornerShape(20.dp)
-              ) {
-                Text(text = "Instagram", color = CapCutTextPrimary, fontSize = 12.sp)
-              }
-              Button(
-                onClick = { onShare("WhatsApp") },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2C2F38)),
-                modifier = Modifier
-                  .weight(1f)
-                  .height(40.dp),
-                shape = RoundedCornerShape(20.dp)
-              ) {
-                Text(text = "WhatsApp", color = CapCutTextPrimary, fontSize = 12.sp)
-              }
-            }
-          }
+          Text(
+            text = "Saved to Projects and local storage (~${uiState.resolutionSetting.estimatedSizeMb} MB)",
+            color = CapCutTextSecondary,
+            fontSize = 13.sp,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+          )
+
+          Spacer(modifier = Modifier.height(24.dp))
 
           Button(
             onClick = onDismiss,
-            colors = ButtonDefaults.buttonColors(
-              containerColor = CapCutTeal,
-              contentColor = Color.Black
-            ),
+            colors = ButtonDefaults.buttonColors(containerColor = CapCutTeal, contentColor = Color.Black),
+            shape = RoundedCornerShape(12.dp),
             modifier = Modifier
               .fillMaxWidth()
-              .height(44.dp),
-            shape = RoundedCornerShape(22.dp)
+              .height(46.dp)
+              .testTag("export_done_button")
           ) {
-            Text(text = "Done", fontWeight = FontWeight.Bold)
+            Text("Done", fontWeight = FontWeight.Bold, fontSize = 15.sp)
           }
         }
       }

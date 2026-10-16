@@ -1,302 +1,253 @@
 package com.example.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.Image
+import android.net.Uri
+import android.widget.VideoView
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Redo
-import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.filled.CropFree
+import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.ColorMatrix
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.R
-import com.example.model.AdjustSettings
-import com.example.model.AspectRatioOption
-import com.example.model.FilterItem
-import com.example.model.TextTrackItem
+import androidx.compose.ui.viewinterop.AndroidView
+import coil.compose.AsyncImage
 import com.example.ui.theme.CapCutBackground
+import com.example.ui.theme.CapCutSurface
 import com.example.ui.theme.CapCutTeal
-import com.example.ui.theme.CapCutTextDisabled
 import com.example.ui.theme.CapCutTextPrimary
+import com.example.ui.theme.CapCutTextSecondary
+import com.example.viewmodel.EditorUiState
 
 @Composable
 fun VideoPreviewArea(
-  currentTimeMs: Long,
-  isPlaying: Boolean,
-  aspectRatio: AspectRatioOption,
-  filter: FilterItem,
-  filterIntensity: Float,
-  adjustSettings: AdjustSettings,
-  activeCaptions: List<TextTrackItem>,
-  pipEnabled: Boolean,
-  canUndo: Boolean,
-  canRedo: Boolean,
-  onPlayPauseToggle: () -> Unit,
-  onFullscreenToggle: () -> Unit,
-  onPipToggle: () -> Unit,
-  onUndoClick: () -> Unit,
-  onRedoClick: () -> Unit,
+  uiState: EditorUiState,
+  onTogglePlayPause: () -> Unit,
+  onToggleMute: () -> Unit,
+  onToggleFullscreen: () -> Unit,
   modifier: Modifier = Modifier
 ) {
-  // Current active caption
-  val currentCaption = activeCaptions.find { currentTimeMs in it.startMs..it.endMs }
+  val context = LocalContext.current
+  val currentClip = uiState.currentClipAtPlayhead
 
-  // Build color matrix for adjustments
-  val colorMatrix = ColorMatrix().apply {
-    val b = adjustSettings.brightness * 2f
-    val c = 1f + (adjustSettings.contrast / 50f)
-    val s = 1f + (adjustSettings.saturation / 50f)
-    setToSaturation(s)
-    // Apply contrast and brightness offset
-    val scale = c
-    val translate = b
-    val array = values
-    array[0] = array[0] * scale
-    array[4] = array[4] + translate
-    array[6] = array[6] * scale
-    array[9] = array[9] + translate
-    array[12] = array[12] * scale
-    array[14] = array[14] + translate
-  }
-
-  Column(
+  Box(
     modifier = modifier
       .fillMaxWidth()
-      .background(CapCutBackground),
-    horizontalAlignment = Alignment.CenterHorizontally
+      .background(CapCutBackground)
+      .padding(8.dp),
+    contentAlignment = Alignment.Center
   ) {
-    // Video viewport container
-    Box(
+    // Aspect Ratio Container
+    BoxWithConstraints(
       modifier = Modifier
-        .fillMaxWidth()
-        .weight(1f)
-        .padding(horizontal = 16.dp, vertical = 4.dp),
+        .aspectRatio(uiState.aspectRatio.ratioFloat)
+        .clip(RoundedCornerShape(8.dp))
+        .background(Color.Black)
+        .clickable { onTogglePlayPause() }
+        .testTag("video_preview_canvas"),
       contentAlignment = Alignment.Center
     ) {
-      // The video player screen with selected aspect ratio
-      Box(
-        modifier = Modifier
-          .fillMaxHeight()
-          .aspectRatio(aspectRatio.ratio)
-          .clip(RoundedCornerShape(4.dp))
-          .background(Color.Black)
-          .pointerInput(Unit) {
-            detectTapGestures(onTap = { onPlayPauseToggle() })
-          }
-          .testTag("video_player_canvas"),
-        contentAlignment = Alignment.Center
-      ) {
-        // Video footage preview image
-        Image(
-          painter = painterResource(id = R.drawable.img_video_preview),
-          contentDescription = "Mecca Video Preview",
-          modifier = Modifier.fillMaxSize(),
-          contentScale = ContentScale.Crop,
-          colorFilter = ColorFilter.colorMatrix(colorMatrix)
-        )
-
-        // Filter tone overlay
-        if (filter.id != "none" && filterIntensity > 0f) {
-          Box(
+      // 1. Media Content (Real Video URI or Real Image URI or Aesthetic Demo Canvas)
+      if (currentClip?.uriString != null) {
+        val uri = Uri.parse(currentClip.uriString)
+        if (currentClip.isVideo) {
+          // Video Playback via AndroidView VideoView
+          AndroidView(
+            factory = { ctx ->
+              VideoView(ctx).apply {
+                setVideoURI(uri)
+                setOnPreparedListener { mp ->
+                  mp.isLooping = true
+                  if (uiState.isMuted) mp.setVolume(0f, 0f) else mp.setVolume(currentClip.volume, currentClip.volume)
+                  if (uiState.isPlaying) start()
+                }
+              }
+            },
+            update = { videoView ->
+              if (uiState.isPlaying) {
+                if (!videoView.isPlaying) videoView.start()
+              } else {
+                if (videoView.isPlaying) videoView.pause()
+              }
+            },
             modifier = Modifier
               .fillMaxSize()
-              .background(Color(filter.colorTone).copy(alpha = filterIntensity * 0.25f))
+              .rotate(currentClip.rotationDegrees)
           )
-        }
-
-        // Vignette overlay
-        if (adjustSettings.vignette > 0f) {
-          Box(
+        } else {
+          // Photo Content via Coil AsyncImage
+          AsyncImage(
+            model = uri,
+            contentDescription = "Selected Photo",
+            contentScale = ContentScale.Crop,
             modifier = Modifier
               .fillMaxSize()
-              .background(Color.Black.copy(alpha = (adjustSettings.vignette / 100f) * 0.45f))
+              .rotate(currentClip.rotationDegrees)
           )
         }
-
-        // Subtitle / Caption text overlay
-        currentCaption?.let { cap ->
-          Box(
-            modifier = Modifier
-              .align(Alignment.BottomCenter)
-              .padding(bottom = 24.dp, start = 16.dp, end = 16.dp)
-              .clip(RoundedCornerShape(8.dp))
-              .background(Color.Black.copy(alpha = 0.65f))
-              .padding(horizontal = 12.dp, vertical = 6.dp)
-          ) {
-            Text(
-              text = cap.text,
-              color = Color.White,
-              fontSize = 13.sp,
-              fontWeight = FontWeight.SemiBold,
-              textAlign = TextAlign.Center
-            )
-          }
-        }
-
-        // Play icon overlay when paused
-        if (!isPlaying) {
-          Box(
-            modifier = Modifier
-              .align(Alignment.Center)
-              .size(52.dp)
-              .clip(CircleShape)
-              .background(Color.Black.copy(alpha = 0.45f)),
-            contentAlignment = Alignment.Center
-          ) {
-            Icon(
-              imageVector = Icons.Default.PlayArrow,
-              contentDescription = "Play",
-              tint = Color.White,
-              modifier = Modifier.size(32.dp)
-            )
-          }
-        }
-      }
-    }
-
-    // Controls bar under video (Fullscreen, Play/Pause, PIP, Undo, Redo)
-    Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .height(44.dp)
-        .padding(horizontal = 12.dp),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-      // Left: Fullscreen icon
-      IconButton(
-        onClick = onFullscreenToggle,
-        modifier = Modifier
-          .size(36.dp)
-          .testTag("preview_fullscreen_button")
-      ) {
-        Icon(
-          imageVector = Icons.Default.CropFree,
-          contentDescription = "Fullscreen preview",
-          tint = CapCutTextPrimary,
-          modifier = Modifier.size(20.dp)
-        )
-      }
-
-      // Center: Play / Pause toggle
-      IconButton(
-        onClick = onPlayPauseToggle,
-        modifier = Modifier
-          .size(38.dp)
-          .testTag("preview_play_pause_button")
-      ) {
-        Icon(
-          imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-          contentDescription = if (isPlaying) "Pause" else "Play",
-          tint = CapCutTextPrimary,
-          modifier = Modifier.size(26.dp)
-        )
-      }
-
-      // Right: PIP, Undo, Redo
-      Row(verticalAlignment = Alignment.CenterVertically) {
-        // PIP indicator button
+      } else {
+        // Built-in Demo Canvas with gradient and motion
         Box(
           modifier = Modifier
-            .height(28.dp)
-            .clip(RoundedCornerShape(4.dp))
-            .clickable { onPipToggle() }
-            .padding(horizontal = 6.dp)
-            .testTag("preview_pip_button"),
+            .fillMaxSize()
+            .background(
+              androidx.compose.ui.graphics.Brush.verticalGradient(
+                colors = listOf(
+                  Color(0xFF1F1C2C),
+                  Color(0xFF928DAB).copy(alpha = 0.5f),
+                  Color(0xFF0F2027)
+                )
+              )
+            )
+            .rotate(currentClip?.rotationDegrees ?: 0f),
           contentAlignment = Alignment.Center
         ) {
-          Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
-          ) {
-            Icon(
-              imageVector = Icons.Default.Tv,
-              contentDescription = "Picture in picture overlay",
-              tint = if (pipEnabled) CapCutTeal else CapCutTextDisabled,
-              modifier = Modifier.size(16.dp)
+          Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+              text = currentClip?.title ?: "No Media Selected",
+              color = CapCutTextPrimary,
+              fontWeight = FontWeight.SemiBold,
+              fontSize = 15.sp
             )
             Text(
-              text = if (pipEnabled) "ON" else "OFF",
-              color = if (pipEnabled) CapCutTeal else CapCutTextDisabled,
-              fontSize = 9.sp,
-              fontWeight = FontWeight.Bold
+              text = if (currentClip?.isVideo == true) "Video Clip" else "Photo",
+              color = CapCutTextSecondary,
+              fontSize = 12.sp
             )
           }
         }
+      }
 
-        Spacer(modifier = Modifier.width(6.dp))
-
-        // Undo
-        IconButton(
-          onClick = onUndoClick,
-          enabled = canUndo,
+      // 2. Filter Tone Tint Overlay
+      if (uiState.selectedFilter.colorTone != 0L) {
+        Box(
           modifier = Modifier
-            .size(36.dp)
-            .testTag("preview_undo_button")
+            .fillMaxSize()
+            .background(Color(uiState.selectedFilter.colorTone).copy(alpha = 0.35f * uiState.filterIntensity))
+        )
+      }
+
+      // 3. Text Overlay Tracks active at currentTimeMs
+      val activeTexts = uiState.textTracks.filter {
+        uiState.currentTimeMs in it.startMs..it.endMs
+      }
+      activeTexts.forEach { textTrack ->
+        Box(
+          modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+          contentAlignment = Alignment.BottomCenter
+        ) {
+          Text(
+            text = textTrack.text,
+            color = try { Color(android.graphics.Color.parseColor(textTrack.colorHex)) } catch (_: Exception) { Color.White },
+            fontSize = textTrack.fontSizeSp.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+              .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+              .padding(horizontal = 8.dp, vertical = 4.dp)
+          )
+        }
+      }
+
+      // 4. Center Play Button overlay when paused
+      if (!uiState.isPlaying) {
+        Box(
+          modifier = Modifier
+            .size(54.dp)
+            .clip(CircleShape)
+            .background(Color.Black.copy(alpha = 0.65f)),
+          contentAlignment = Alignment.Center
         ) {
           Icon(
-            imageVector = Icons.AutoMirrored.Filled.Undo,
-            contentDescription = "Undo",
-            tint = if (canUndo) CapCutTextPrimary else CapCutTextDisabled,
-            modifier = Modifier.size(20.dp)
+            imageVector = Icons.Default.PlayArrow,
+            contentDescription = "Play",
+            tint = Color.White,
+            modifier = Modifier.size(32.dp)
+          )
+        }
+      }
+
+      // 5. Bottom Controls Overlay inside preview: Mute, Time indicator, Fullscreen
+      Row(
+        modifier = Modifier
+          .fillMaxWidth()
+          .align(Alignment.BottomCenter)
+          .background(Color.Black.copy(alpha = 0.45f))
+          .padding(horizontal = 10.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        // Mute button
+        IconButton(
+          onClick = onToggleMute,
+          modifier = Modifier.size(32.dp)
+        ) {
+          Icon(
+            imageVector = if (uiState.isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
+            contentDescription = if (uiState.isMuted) "Unmute" else "Mute",
+            tint = if (uiState.isMuted) CapCutTeal else Color.White,
+            modifier = Modifier.size(18.dp)
           )
         }
 
-        // Redo
+        // Time code: 00:02 / 00:12
+        Text(
+          text = "${formatTime(uiState.currentTimeMs)} / ${formatTime(uiState.totalDurationMs)}",
+          color = Color.White,
+          fontSize = 12.sp,
+          fontWeight = FontWeight.Medium
+        )
+
+        // Fullscreen toggle
         IconButton(
-          onClick = onRedoClick,
-          enabled = canRedo,
-          modifier = Modifier
-            .size(36.dp)
-            .testTag("preview_redo_button")
+          onClick = onToggleFullscreen,
+          modifier = Modifier.size(32.dp)
         ) {
           Icon(
-            imageVector = Icons.AutoMirrored.Filled.Redo,
-            contentDescription = "Redo",
-            tint = if (canRedo) CapCutTextPrimary else CapCutTextDisabled,
+            imageVector = Icons.Default.Fullscreen,
+            contentDescription = "Fullscreen",
+            tint = Color.White,
             modifier = Modifier.size(20.dp)
           )
         }
       }
     }
   }
+}
+
+fun formatTime(ms: Long): String {
+  val totalSeconds = (ms / 1000).coerceAtLeast(0)
+  val minutes = totalSeconds / 60
+  val seconds = totalSeconds % 60
+  return String.format("%02d:%02d", minutes, seconds)
 }

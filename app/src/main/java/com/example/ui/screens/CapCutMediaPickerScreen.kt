@@ -1,19 +1,18 @@
 package com.example.ui.screens
 
+import android.content.ContentUris
+import android.content.Context
 import android.net.Uri
+import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.DrawableRes
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -21,7 +20,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -29,23 +27,27 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddPhotoAlternate
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,449 +57,378 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.R
+import com.example.model.MediaPickerItem
 import com.example.model.VideoClip
 import com.example.ui.theme.CapCutBackground
+import com.example.ui.theme.CapCutSurface
+import com.example.ui.theme.CapCutSurfaceVariant
 import com.example.ui.theme.CapCutTeal
-import com.example.ui.theme.CapCutTextDisabled
 import com.example.ui.theme.CapCutTextPrimary
 import com.example.ui.theme.CapCutTextSecondary
-
-data class MediaPickerItem(
-  val id: String,
-  val title: String,
-  val durationStr: String,
-  val durationMs: Long,
-  @DrawableRes val drawableRes: Int? = null,
-  val uri: Uri? = null,
-  val isVideo: Boolean = true
-)
+import java.util.UUID
 
 @Composable
 fun CapCutMediaPickerScreen(
+  isPhotoModeOnly: Boolean = false,
   onClose: () -> Unit,
-  onMediaSelected: (List<VideoClip>) -> Unit,
-  modifier: Modifier = Modifier
+  onMediaSelected: (List<VideoClip>) -> Unit
 ) {
-  var selectedTab by remember { mutableStateOf("Videos") }
-  var isHdEnabled by remember { mutableStateOf(false) }
-  val selectedMediaIds = remember { mutableStateListOf<String>() }
+  val context = LocalContext.current
+  var selectedTab by remember { mutableIntStateOf(if (isPhotoModeOnly) 1 else 0) }
+  val tabs = listOf("All", "Photos", "Videos")
 
-  // Initial preset media items matching the screenshot
-  val mediaList = remember {
-    mutableStateListOf(
-      MediaPickerItem("m1", "Mecca Courtyard", "00:27", 27000L, drawableRes = R.drawable.img_video_preview),
-      MediaPickerItem("m2", "Kaaba Pilgrimage", "00:30", 30000L, drawableRes = R.drawable.img_video_clip),
-      MediaPickerItem("m3", "GMC Luxury SUV", "00:11", 11000L, drawableRes = R.drawable.img_suv_car),
-      MediaPickerItem("m4", "Arches of Mecca", "00:31", 31000L, drawableRes = R.drawable.img_video_clip),
-      MediaPickerItem("m5", "Pilgrims Prayer", "00:34", 34000L, drawableRes = R.drawable.img_video_preview),
-      MediaPickerItem("m6", "Mountain Valley", "11:09", 669000L, drawableRes = R.drawable.img_nature_mountains),
-      MediaPickerItem("m7", "Courtyard Gathering", "00:41", 41000L, drawableRes = R.drawable.img_video_clip),
-      MediaPickerItem("m8", "Tawaf Panorama", "00:27", 27000L, drawableRes = R.drawable.img_video_preview),
-      MediaPickerItem("m9", "Black SUV Ride", "00:11", 11000L, drawableRes = R.drawable.img_suv_car),
-      MediaPickerItem("m10", "Scenic Travel", "00:13", 13000L, drawableRes = R.drawable.img_nature_mountains),
-      MediaPickerItem("m11", "Mecca Grand Mosque", "00:31", 31000L, drawableRes = R.drawable.img_video_preview),
-      MediaPickerItem("m12", "Green Valley Hills", "00:19", 19000L, drawableRes = R.drawable.img_nature_mountains)
-    )
-  }
+  val deviceMediaList = remember { mutableStateListOf<MediaPickerItem>() }
+  val selectedItems = remember { mutableStateListOf<MediaPickerItem>() }
 
-  // System zero-permission photo/video picker integration
-  val systemPickerLauncher = rememberLauncherForActivityResult(
-    contract = ActivityResultContracts.PickMultipleVisualMedia()
-  ) { uris ->
+  // Android Photo Picker Launcher for picking real photos/videos directly from device gallery
+  val galleryLauncher = rememberLauncherForActivityResult(
+    contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 10)
+  ) { uris: List<Uri> ->
     if (uris.isNotEmpty()) {
-      uris.forEachIndexed { index, uri ->
-        val newItem = MediaPickerItem(
-          id = "device_${System.currentTimeMillis()}_$index",
-          title = "Device Media",
-          durationStr = "00:25",
-          durationMs = 25000L,
-          uri = uri,
-          isVideo = true
+      val clips = uris.mapIndexed { idx, uri ->
+        val uriStr = uri.toString()
+        val isVideo = uriStr.contains("video", ignoreCase = true) || !isPhotoModeOnly
+        VideoClip(
+          id = UUID.randomUUID().toString(),
+          title = "Clip ${idx + 1}",
+          startMs = 0L,
+          endMs = if (isVideo) 5000L else 3000L,
+          originalDurationMs = if (isVideo) 5000L else 3000L,
+          uriString = uriStr,
+          isVideo = isVideo
         )
-        mediaList.add(0, newItem)
-        if (!selectedMediaIds.contains(newItem.id)) {
-          selectedMediaIds.add(newItem.id)
-        }
       }
+      onMediaSelected(clips)
     }
   }
 
-  Scaffold(
-    modifier = modifier
+  // Load real device media ONLY when user taps + and enters this picker screen
+  LaunchedEffect(Unit) {
+    loadLocalDeviceMedia(context) { items ->
+      deviceMediaList.clear()
+      deviceMediaList.addAll(items)
+    }
+  }
+
+  val filteredMedia = remember(selectedTab, deviceMediaList.size) {
+    when (selectedTab) {
+      1 -> deviceMediaList.filter { !it.isVideo }
+      2 -> deviceMediaList.filter { it.isVideo }
+      else -> deviceMediaList
+    }
+  }
+
+  Column(
+    modifier = Modifier
       .fillMaxSize()
-      .background(CapCutBackground),
-    containerColor = CapCutBackground,
-    contentWindowInsets = WindowInsets(0, 0, 0, 0),
-    topBar = {
-      Column(
-        modifier = Modifier
-          .fillMaxWidth()
-          .windowInsetsPadding(WindowInsets.statusBars)
-          .background(CapCutBackground)
-      ) {
-        // TOP BAR (Close button + Albums, Generated, Spaces, Library)
-        Row(
-          modifier = Modifier
-            .fillMaxWidth()
-            .height(52.dp)
-            .padding(horizontal = 12.dp),
-          verticalAlignment = Alignment.CenterVertically
-        ) {
-          IconButton(
-            onClick = onClose,
-            modifier = Modifier
-              .size(36.dp)
-              .testTag("media_picker_close")
-          ) {
-            Icon(
-              imageVector = Icons.Default.Close,
-              contentDescription = "Close",
-              tint = CapCutTextPrimary,
-              modifier = Modifier.size(24.dp)
-            )
-          }
-
-          Spacer(modifier = Modifier.width(8.dp))
-
-          // Category tabs (Albums ▾, Generated, Spaces ▾, Library)
-          val scrollState = rememberScrollState()
-          Row(
-            modifier = Modifier
-              .weight(1f)
-              .horizontalScroll(scrollState),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(18.dp)
-          ) {
-            // Albums ▾
-            Row(
-              verticalAlignment = Alignment.CenterVertically,
-              modifier = Modifier
-                .clickable {
-                  systemPickerLauncher.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
-                  )
-                }
-                .testTag("albums_dropdown")
-            ) {
-              Text(
-                text = "Albums",
-                color = CapCutTextPrimary,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold
-              )
-              Icon(
-                imageVector = Icons.Default.ArrowDropDown,
-                contentDescription = null,
-                tint = CapCutTextPrimary,
-                modifier = Modifier.size(20.dp)
-              )
-            }
-
-            Text(
-              text = "Generated",
-              color = CapCutTextSecondary,
-              fontSize = 15.sp,
-              fontWeight = FontWeight.Medium
-            )
-
-            // Spaces ▾ with yellow notification dot
-            Row(verticalAlignment = Alignment.CenterVertically) {
-              Text(
-                text = "Spaces",
-                color = CapCutTextSecondary,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium
-              )
-              Box(
-                modifier = Modifier
-                  .padding(start = 2.dp, bottom = 6.dp)
-                  .size(5.dp)
-                  .clip(CircleShape)
-                  .background(Color(0xFFFFD166))
-              )
-              Icon(
-                imageVector = Icons.Default.ArrowDropDown,
-                contentDescription = null,
-                tint = CapCutTextSecondary,
-                modifier = Modifier.size(20.dp)
-              )
-            }
-
-            Text(
-              text = "Library",
-              color = CapCutTextSecondary,
-              fontSize = 15.sp,
-              fontWeight = FontWeight.Medium
-            )
-          }
-
-          // Button to trigger Android device system gallery picker
-          IconButton(
-            onClick = {
-              systemPickerLauncher.launch(
-                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
-              )
-            },
-            modifier = Modifier.testTag("open_system_picker_button")
-          ) {
-            Icon(
-              imageVector = Icons.Default.AddPhotoAlternate,
-              contentDescription = "Pick from device",
-              tint = CapCutTeal,
-              modifier = Modifier.size(22.dp)
-            )
-          }
-        }
-
-        // SUB TABS ROW ("Videos", "Photos")
-        Row(
-          modifier = Modifier
-            .fillMaxWidth()
-            .height(44.dp)
-            .padding(horizontal = 16.dp),
-          horizontalArrangement = Arrangement.spacedBy(40.dp),
-          verticalAlignment = Alignment.CenterVertically
-        ) {
-          // Videos tab
-          Column(
-            modifier = Modifier
-              .clickable { selectedTab = "Videos" }
-              .testTag("tab_videos"),
-            horizontalAlignment = Alignment.CenterHorizontally
-          ) {
-            Text(
-              text = "Videos",
-              color = if (selectedTab == "Videos") CapCutTeal else CapCutTextSecondary,
-              fontSize = 15.sp,
-              fontWeight = if (selectedTab == "Videos") FontWeight.Bold else FontWeight.Normal
-            )
-            if (selectedTab == "Videos") {
-              Spacer(modifier = Modifier.height(4.dp))
-              Box(
-                modifier = Modifier
-                  .width(28.dp)
-                  .height(2.dp)
-                  .background(CapCutTeal)
-              )
-            }
-          }
-
-          // Photos tab
-          Column(
-            modifier = Modifier
-              .clickable { selectedTab = "Photos" }
-              .testTag("tab_photos"),
-            horizontalAlignment = Alignment.CenterHorizontally
-          ) {
-            Text(
-              text = "Photos",
-              color = if (selectedTab == "Photos") CapCutTeal else CapCutTextSecondary,
-              fontSize = 15.sp,
-              fontWeight = if (selectedTab == "Photos") FontWeight.Bold else FontWeight.Normal
-            )
-            if (selectedTab == "Photos") {
-              Spacer(modifier = Modifier.height(4.dp))
-              Box(
-                modifier = Modifier
-                  .width(28.dp)
-                  .height(2.dp)
-                  .background(CapCutTeal)
-              )
-            }
-          }
-        }
+      .background(CapCutBackground)
+      .windowInsetsPadding(WindowInsets.statusBars)
+  ) {
+    // Top Bar
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .height(56.dp)
+        .padding(horizontal = 12.dp),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically
+    ) {
+      IconButton(onClick = onClose, modifier = Modifier.size(40.dp)) {
+        Icon(Icons.Default.Close, contentDescription = "Close", tint = CapCutTextPrimary)
       }
-    },
-    bottomBar = {
-      // BOTTOM BAR (HD toggle + "Add" button)
-      Row(
-        modifier = Modifier
-          .fillMaxWidth()
-          .windowInsetsPadding(WindowInsets.navigationBars)
-          .height(60.dp)
-          .background(Color(0xFF141518))
-          .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.End
-      ) {
-        // HD radio toggle
-        Row(
-          verticalAlignment = Alignment.CenterVertically,
-          modifier = Modifier
-            .clickable { isHdEnabled = !isHdEnabled }
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-            .testTag("hd_toggle")
-        ) {
-          Box(
-            modifier = Modifier
-              .size(16.dp)
-              .clip(CircleShape)
-              .border(
-                1.5.dp,
-                if (isHdEnabled) CapCutTeal else CapCutTextDisabled,
-                CircleShape
-              ),
-            contentAlignment = Alignment.Center
-          ) {
-            if (isHdEnabled) {
-              Box(
-                modifier = Modifier
-                  .size(8.dp)
-                  .clip(CircleShape)
-                  .background(CapCutTeal)
-              )
-            }
+
+      Text(
+        text = if (isPhotoModeOnly) "Select Photo" else "Select Media",
+        color = CapCutTextPrimary,
+        fontSize = 17.sp,
+        fontWeight = FontWeight.Bold
+      )
+
+      // Button to open system gallery picker directly
+      Button(
+        onClick = {
+          val mediaType = if (isPhotoModeOnly) {
+            ActivityResultContracts.PickVisualMedia.ImageOnly
+          } else {
+            ActivityResultContracts.PickVisualMedia.ImageAndVideo
           }
-          Spacer(modifier = Modifier.width(6.dp))
-          Text(
-            text = "HD",
-            color = if (isHdEnabled) CapCutTeal else CapCutTextSecondary,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold
-          )
-        }
-
-        Spacer(modifier = Modifier.width(8.dp))
-
-        // "Add" or "Add (N)" button
-        val hasSelection = selectedMediaIds.isNotEmpty()
-        Box(
-          modifier = Modifier
-            .height(38.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(if (hasSelection) CapCutTeal else Color(0xFF132F2F))
-            .clickable(enabled = hasSelection) {
-              // Convert selected items into VideoClips for editor
-              val selectedClips = selectedMediaIds.mapNotNull { id ->
-                mediaList.find { it.id == id }?.let { item ->
-                  VideoClip(
-                    id = item.id,
-                    title = item.title,
-                    startMs = 0L,
-                    endMs = item.durationMs,
-                    originalDurationMs = item.durationMs,
-                    thumbnailRes = item.drawableRes ?: R.drawable.img_video_preview
-                  )
-                }
-              }
-              onMediaSelected(selectedClips)
-            }
-            .padding(horizontal = 22.dp)
-            .testTag("media_picker_add_button"),
-          contentAlignment = Alignment.Center
-        ) {
-          Text(
-            text = if (hasSelection) "Add (${selectedMediaIds.size})" else "Add",
-            color = if (hasSelection) Color.Black else Color(0xFF2E6565),
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold
-          )
-        }
+          galleryLauncher.launch(PickVisualMediaRequest(mediaType))
+        },
+        colors = ButtonDefaults.buttonColors(containerColor = CapCutSurfaceVariant, contentColor = CapCutTeal),
+        shape = RoundedCornerShape(14.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+        modifier = Modifier.height(32.dp).testTag("open_system_gallery_button")
+      ) {
+        Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(16.dp))
+        Spacer(modifier = Modifier.width(4.dp))
+        Text("Gallery", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
       }
     }
-  ) { paddingValues ->
-    // 3-COLUMN MEDIA GRID
-    LazyVerticalGrid(
-      columns = GridCells.Fixed(3),
-      modifier = Modifier
-        .fillMaxSize()
-        .padding(paddingValues),
-      contentPadding = PaddingValues(2.dp),
-      horizontalArrangement = Arrangement.spacedBy(2.dp),
-      verticalArrangement = Arrangement.spacedBy(2.dp)
-    ) {
-      itemsIndexed(mediaList) { index, item ->
-        val selectedIndex = selectedMediaIds.indexOf(item.id)
-        val isSelected = selectedIndex != -1
 
-        Box(
-          modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(1f)
-            .clickable {
-              if (isSelected) {
-                selectedMediaIds.remove(item.id)
-              } else {
-                selectedMediaIds.add(item.id)
-              }
-            }
-            .testTag("media_grid_item_$index"),
-          contentAlignment = Alignment.Center
-        ) {
-          // Thumbnail image
-          if (item.uri != null) {
-            AsyncImage(
-              model = item.uri,
-              contentDescription = item.title,
-              modifier = Modifier.fillMaxSize(),
-              contentScale = ContentScale.Crop
-            )
-          } else if (item.drawableRes != null) {
-            Image(
-              painter = painterResource(id = item.drawableRes),
-              contentDescription = item.title,
-              modifier = Modifier.fillMaxSize(),
-              contentScale = ContentScale.Crop
+    // Tabs
+    ScrollableTabRow(
+      selectedTabIndex = selectedTab,
+      containerColor = CapCutBackground,
+      contentColor = CapCutTeal,
+      edgePadding = 16.dp,
+      indicator = { tabPositions ->
+        TabRowDefaults.SecondaryIndicator(
+          modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+          color = CapCutTeal,
+          height = 2.dp
+        )
+      }
+    ) {
+      tabs.forEachIndexed { index, tabTitle ->
+        Tab(
+          selected = selectedTab == index,
+          onClick = { selectedTab = index },
+          text = {
+            Text(
+              text = tabTitle,
+              fontSize = 14.sp,
+              fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
+              color = if (selectedTab == index) CapCutTeal else CapCutTextSecondary
             )
           }
+        )
+      }
+    }
 
-          // Slight dark tint when selected
-          if (isSelected) {
+    // Media Grid
+    Box(
+      modifier = Modifier
+        .weight(1f)
+        .fillMaxWidth()
+    ) {
+      if (filteredMedia.isEmpty()) {
+        Column(
+          modifier = Modifier.align(Alignment.Center).padding(32.dp),
+          horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+          Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = CapCutTextSecondary, modifier = Modifier.size(48.dp))
+          Spacer(modifier = Modifier.height(12.dp))
+          Text(
+            text = "No media detected in gallery yet",
+            color = CapCutTextSecondary,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium
+          )
+          Spacer(modifier = Modifier.height(8.dp))
+          Button(
+            onClick = {
+              galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
+            },
+            colors = ButtonDefaults.buttonColors(containerColor = CapCutTeal, contentColor = Color.Black)
+          ) {
+            Text("Open Gallery Picker", fontWeight = FontWeight.Bold)
+          }
+        }
+      } else {
+        LazyVerticalGrid(
+          columns = GridCells.Fixed(3),
+          modifier = Modifier
+            .fillMaxSize()
+            .padding(2.dp),
+          horizontalArrangement = Arrangement.spacedBy(2.dp),
+          verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+          items(filteredMedia) { item ->
+            val isSelected = selectedItems.any { it.uri == item.uri }
+            val selectedIndex = selectedItems.indexOfFirst { it.uri == item.uri }
+
             Box(
               modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.3f))
-                .border(2.dp, CapCutTeal)
-            )
-          }
-
-          // Top-right selection circle badge (shows number "1", "2" or empty circle)
-          Box(
-            modifier = Modifier
-              .align(Alignment.TopEnd)
-              .padding(6.dp)
-              .size(24.dp)
-              .clip(CircleShape)
-              .background(if (isSelected) CapCutTeal else Color.Black.copy(alpha = 0.35f))
-              .border(1.5.dp, if (isSelected) CapCutTeal else Color.White, CircleShape),
-            contentAlignment = Alignment.Center
-          ) {
-            if (isSelected) {
-              Text(
-                text = "${selectedIndex + 1}",
-                color = Color.Black,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Black
+                .aspectRatio(1f)
+                .background(CapCutSurface)
+                .clickable {
+                  if (isSelected) {
+                    selectedItems.removeAll { it.uri == item.uri }
+                  } else {
+                    selectedItems.add(item)
+                  }
+                }
+            ) {
+              AsyncImage(
+                model = Uri.parse(item.uri),
+                contentDescription = item.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
               )
-            }
-          }
 
-          // Bottom-right duration text (e.g., "00:27")
-          Box(
-            modifier = Modifier
-              .align(Alignment.BottomEnd)
-              .padding(4.dp)
-              .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(2.dp))
-              .padding(horizontal = 4.dp, vertical = 1.dp)
-          ) {
-            Text(
-              text = item.durationStr,
-              color = Color.White,
-              fontSize = 10.sp,
-              fontWeight = FontWeight.Medium,
-              fontFamily = FontFamily.Monospace
-            )
+              // Video Duration Badge
+              if (item.isVideo) {
+                Box(
+                  modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(4.dp)
+                    .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                ) {
+                  Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(10.dp))
+                    Text(text = formatDuration(item.durationMs), color = Color.White, fontSize = 9.sp)
+                  }
+                }
+              }
+
+              // Checkbox Badge
+              Box(
+                modifier = Modifier
+                  .align(Alignment.TopEnd)
+                  .padding(6.dp)
+                  .size(22.dp)
+                  .clip(CircleShape)
+                  .background(if (isSelected) CapCutTeal else Color.Black.copy(alpha = 0.45f))
+                  .border(1.5.dp, if (isSelected) CapCutTeal else Color.White, CircleShape),
+                contentAlignment = Alignment.Center
+              ) {
+                if (isSelected) {
+                  Text(
+                    text = "${selectedIndex + 1}",
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp
+                  )
+                }
+              }
+            }
           }
         }
       }
     }
+
+    // Bottom Action Bar: "Add (N)" button
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .background(CapCutSurface)
+        .padding(horizontal = 16.dp, vertical = 12.dp),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically
+    ) {
+      Text(
+        text = if (selectedItems.isNotEmpty()) "${selectedItems.size} selected" else "Select clips to edit",
+        color = CapCutTextSecondary,
+        fontSize = 13.sp
+      )
+
+      Button(
+        onClick = {
+          if (selectedItems.isNotEmpty()) {
+            val clips = selectedItems.map { media ->
+              VideoClip(
+                id = UUID.randomUUID().toString(),
+                title = media.name,
+                startMs = 0L,
+                endMs = if (media.isVideo) media.durationMs.coerceAtLeast(1000L) else 3000L,
+                originalDurationMs = if (media.isVideo) media.durationMs.coerceAtLeast(1000L) else 3000L,
+                uriString = media.uri,
+                isVideo = media.isVideo
+              )
+            }
+            onMediaSelected(clips)
+          }
+        },
+        enabled = selectedItems.isNotEmpty(),
+        colors = ButtonDefaults.buttonColors(
+          containerColor = CapCutTeal,
+          contentColor = Color.Black,
+          disabledContainerColor = CapCutSurfaceVariant,
+          disabledContentColor = CapCutTextSecondary
+        ),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.testTag("add_media_confirm_button")
+      ) {
+        Text(
+          text = if (selectedItems.isNotEmpty()) "Add (${selectedItems.size})" else "Add",
+          fontWeight = FontWeight.Bold,
+          fontSize = 14.sp
+        )
+      }
+    }
   }
+}
+
+private fun formatDuration(ms: Long): String {
+  val sec = (ms / 1000).coerceAtLeast(0)
+  val m = sec / 60
+  val s = sec % 60
+  return String.format("%02d:%02d", m, s)
+}
+
+// Scans local media from device safely
+private fun loadLocalDeviceMedia(context: Context, onResult: (List<MediaPickerItem>) -> Unit) {
+  val list = mutableListOf<MediaPickerItem>()
+  try {
+    // 1. Query Videos
+    val videoProjection = arrayOf(
+      MediaStore.Video.Media._ID,
+      MediaStore.Video.Media.DISPLAY_NAME,
+      MediaStore.Video.Media.DURATION,
+      MediaStore.Video.Media.DATE_ADDED
+    )
+    val videoCursor = context.contentResolver.query(
+      MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+      videoProjection,
+      null,
+      null,
+      "${MediaStore.Video.Media.DATE_ADDED} DESC"
+    )
+    videoCursor?.use { cursor ->
+      val idCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
+      val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
+      val durCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)
+      val dateCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_ADDED)
+
+      var count = 0
+      while (cursor.moveToNext() && count < 50) {
+        val id = cursor.getLong(idCol)
+        val name = cursor.getString(nameCol) ?: "Video"
+        val dur = cursor.getLong(durCol).coerceAtLeast(1000L)
+        val date = cursor.getLong(dateCol)
+        val uri = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id)
+        list.add(MediaPickerItem(uri.toString(), name, dur, isVideo = true, dateAdded = date))
+        count++
+      }
+    }
+
+    // 2. Query Images
+    val imgProjection = arrayOf(
+      MediaStore.Images.Media._ID,
+      MediaStore.Images.Media.DISPLAY_NAME,
+      MediaStore.Images.Media.DATE_ADDED
+    )
+    val imgCursor = context.contentResolver.query(
+      MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+      imgProjection,
+      null,
+      null,
+      "${MediaStore.Images.Media.DATE_ADDED} DESC"
+    )
+    imgCursor?.use { cursor ->
+      val idCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
+      val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
+      val dateCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
+
+      var count = 0
+      while (cursor.moveToNext() && count < 50) {
+        val id = cursor.getLong(idCol)
+        val name = cursor.getString(nameCol) ?: "Photo"
+        val date = cursor.getLong(dateCol)
+        val uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+        list.add(MediaPickerItem(uri.toString(), name, 3000L, isVideo = false, dateAdded = date))
+        count++
+      }
+    }
+  } catch (_: Exception) {}
+
+  list.sortByDescending { it.dateAdded }
+  onResult(list)
 }

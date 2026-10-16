@@ -1,6 +1,7 @@
 package com.example.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -10,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -18,16 +18,25 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Animation
+import androidx.compose.material.icons.filled.AcUnit
+import androidx.compose.material.icons.filled.AspectRatio
+import androidx.compose.material.icons.filled.Audiotrack
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.AutoFixHigh
+import androidx.compose.material.icons.filled.CallSplit
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Diamond
-import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.RotateRight
 import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.Transform
+import androidx.compose.material.icons.filled.Subtitles
+import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,680 +58,314 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.AdjustSettings
-import com.example.model.AspectRatioOption
 import com.example.model.FilterItem
 import com.example.model.MainTool
 import com.example.model.SubMenuType
 import com.example.ui.theme.CapCutBackground
-import com.example.ui.theme.CapCutPurple
+import com.example.ui.theme.CapCutSurface
+import com.example.ui.theme.CapCutSurfaceVariant
 import com.example.ui.theme.CapCutTeal
-import com.example.ui.theme.CapCutTextDisabled
 import com.example.ui.theme.CapCutTextPrimary
 import com.example.ui.theme.CapCutTextSecondary
+import com.example.viewmodel.AVAILABLE_FILTERS
+import com.example.viewmodel.EditorUiState
 
 @Composable
 fun CapCutBottomBar(
-  activeSubMenu: SubMenuType,
-  selectedTool: MainTool?,
-  availableFilters: List<FilterItem>,
-  currentFilter: FilterItem,
-  filterIntensity: Float,
-  adjustSettings: AdjustSettings,
-  aspectRatio: AspectRatioOption,
-  currentSpeed: Float = 1.0f,
-  currentVolume: Float = 1.0f,
-  onToolClick: (MainTool) -> Unit,
+  uiState: EditorUiState,
+  onMainToolClick: (MainTool) -> Unit,
   onCloseSubMenu: () -> Unit,
-  onSplitClick: () -> Unit,
-  onSpeedClick: () -> Unit = {},
-  onVolumeClick: () -> Unit = {},
-  onDuplicateClick: () -> Unit = {},
-  onSpeedChange: (Float) -> Unit = {},
-  onVolumeChange: (Float) -> Unit = {},
-  onDeleteClick: () -> Unit,
-  onFilterSelect: (FilterItem) -> Unit,
-  onFilterIntensityChange: (Float) -> Unit,
-  onAdjustChange: (AdjustSettings) -> Unit,
-  onAdjustReset: () -> Unit,
-  onAspectRatioSelect: (AspectRatioOption) -> Unit,
-  onAddTextClick: () -> Unit,
-  onAddAudioClick: () -> Unit,
-  onAutoCaptionsClick: () -> Unit,
+  onSplitClip: () -> Unit,
+  onDeleteClip: () -> Unit,
+  onDuplicateClip: () -> Unit,
+  onRotateClip: () -> Unit,
+  onReverseClip: () -> Unit,
+  onFreezeClip: () -> Unit,
+  onOpenSpeedMenu: () -> Unit,
+  onOpenVolumeMenu: () -> Unit,
+  onSetSpeed: (Float) -> Unit,
+  onSetVolume: (Float) -> Unit,
+  onSetFilter: (FilterItem) -> Unit,
+  onSetFilterIntensity: (Float) -> Unit,
+  onUpdateAdjust: (AdjustSettings) -> Unit,
+  onResetAdjust: () -> Unit,
+  onAddAudio: (String, String) -> Unit,
+  onAddCaptions: () -> Unit,
+  onOpenSfxDialog: () -> Unit,
+  onOpenVoiceoverDialog: () -> Unit,
   modifier: Modifier = Modifier
 ) {
   Box(
     modifier = modifier
       .fillMaxWidth()
-      .height(68.dp)
-      .background(CapCutBackground)
+      .background(CapCutSurface)
+      .padding(vertical = 8.dp)
   ) {
-    when (activeSubMenu) {
+    when (uiState.activeSubMenu) {
       SubMenuType.NONE -> {
-        MainMenuToolbar(onToolClick = onToolClick)
+        // Main Tools Row
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp),
+          horizontalArrangement = Arrangement.spacedBy(16.dp),
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          ToolIconItem(MainTool.EDIT.title, Icons.Default.ContentCut) { onMainToolClick(MainTool.EDIT) }
+          ToolIconItem(MainTool.AUDIO.title, Icons.Default.Audiotrack) { onMainToolClick(MainTool.AUDIO) }
+          ToolIconItem(MainTool.TEXT.title, Icons.Default.TextFields) { onMainToolClick(MainTool.TEXT) }
+          ToolIconItem(MainTool.FILTERS.title, Icons.Default.AutoAwesome) { onMainToolClick(MainTool.FILTERS) }
+          ToolIconItem(MainTool.ADJUST.title, Icons.Default.Tune) { onMainToolClick(MainTool.ADJUST) }
+          ToolIconItem(MainTool.RATIO.title, Icons.Default.AspectRatio) { onMainToolClick(MainTool.RATIO) }
+          ToolIconItem(MainTool.EFFECTS.title, Icons.Default.AutoFixHigh) { onMainToolClick(MainTool.EFFECTS) }
+        }
       }
-      SubMenuType.CLIP_EDIT -> {
-        ClipEditSubToolbar(
-          onBack = onCloseSubMenu,
-          onSplit = onSplitClick,
-          onSpeed = onSpeedClick,
-          onVolume = onVolumeClick,
-          onDuplicate = onDuplicateClick,
-          onDelete = onDeleteClick,
-          onFilters = { onToolClick(MainTool.FILTERS) },
-          onAdjust = { onToolClick(MainTool.ADJUST) }
-        )
+
+      SubMenuType.CLIP_OPTIONS -> {
+        // Actions for selected clip
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 8.dp),
+          horizontalArrangement = Arrangement.spacedBy(12.dp),
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          // Done / Back check
+          IconButton(onClick = onCloseSubMenu, modifier = Modifier.size(42.dp)) {
+            Icon(Icons.Default.Check, contentDescription = "Done", tint = CapCutTeal)
+          }
+
+          ToolIconItem("Split", Icons.Default.CallSplit, onSplitClip)
+          ToolIconItem("Speed", Icons.Default.Speed, onOpenSpeedMenu)
+          ToolIconItem("Volume", Icons.Default.VolumeUp, onOpenVolumeMenu)
+          ToolIconItem("Rotate", Icons.Default.RotateRight, onRotateClip)
+          ToolIconItem("Freeze", Icons.Default.AcUnit, onFreezeClip)
+          ToolIconItem("Reverse", Icons.Default.History, onReverseClip)
+          ToolIconItem("Duplicate", Icons.Default.ContentCopy, onDuplicateClip)
+          ToolIconItem("Delete", Icons.Default.Delete, onDeleteClip)
+        }
       }
+
       SubMenuType.SPEED -> {
-        SpeedSubToolbar(
-          currentSpeed = currentSpeed,
-          onSpeedChange = onSpeedChange,
-          onConfirm = onCloseSubMenu
-        )
+        // Speed Adjustment Slider
+        val currentSpeed = uiState.selectedClip?.speed ?: 1.0f
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Text("Clip Speed: ${String.format("%.1f", currentSpeed)}x", color = CapCutTextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            IconButton(onClick = onCloseSubMenu, modifier = Modifier.size(32.dp)) {
+              Icon(Icons.Default.Check, contentDescription = "Done", tint = CapCutTeal)
+            }
+          }
+          Slider(
+            value = currentSpeed,
+            onValueChange = { onSetSpeed(it) },
+            valueRange = 0.2f..5.0f,
+            steps = 47,
+            colors = SliderDefaults.colors(thumbColor = CapCutTeal, activeTrackColor = CapCutTeal)
+          )
+        }
       }
+
       SubMenuType.VOLUME -> {
-        VolumeSubToolbar(
-          currentVolume = currentVolume,
-          onVolumeChange = onVolumeChange,
-          onConfirm = onCloseSubMenu
-        )
+        // Volume Adjustment Slider
+        val currentVol = uiState.selectedClip?.volume ?: 1.0f
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Text("Clip Volume: ${(currentVol * 100).toInt()}%", color = CapCutTextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            IconButton(onClick = onCloseSubMenu, modifier = Modifier.size(32.dp)) {
+              Icon(Icons.Default.Check, contentDescription = "Done", tint = CapCutTeal)
+            }
+          }
+          Slider(
+            value = currentVol,
+            onValueChange = { onSetVolume(it) },
+            valueRange = 0.0f..2.0f,
+            colors = SliderDefaults.colors(thumbColor = CapCutTeal, activeTrackColor = CapCutTeal)
+          )
+        }
       }
-      SubMenuType.FILTERS -> {
-        FiltersSubToolbar(
-          filters = availableFilters,
-          currentFilter = currentFilter,
-          intensity = filterIntensity,
-          onFilterSelect = onFilterSelect,
-          onIntensityChange = onFilterIntensityChange,
-          onConfirm = onCloseSubMenu
-        )
+
+      SubMenuType.FILTER -> {
+        // Filter Selection Cards
+        Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+          Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Text("Filters", color = CapCutTextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            IconButton(onClick = onCloseSubMenu, modifier = Modifier.size(32.dp)) {
+              Icon(Icons.Default.Check, contentDescription = "Done", tint = CapCutTeal)
+            }
+          }
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .horizontalScroll(rememberScrollState())
+              .padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+          ) {
+            AVAILABLE_FILTERS.forEach { filter ->
+              val isSelected = filter.id == uiState.selectedFilter.id
+              Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.clickable { onSetFilter(filter) }
+              ) {
+                Box(
+                  modifier = Modifier
+                    .size(46.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF2C2C34))
+                    .border(2.dp, if (isSelected) CapCutTeal else Color.Transparent, CircleShape),
+                  contentAlignment = Alignment.Center
+                ) {
+                  Box(
+                    modifier = Modifier
+                      .size(38.dp)
+                      .clip(CircleShape)
+                      .background(
+                        if (filter.colorTone != 0L) Color(filter.colorTone).copy(alpha = 0.7f) else Color(0xFF555566)
+                      )
+                  )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                  text = filter.name,
+                  color = if (isSelected) CapCutTeal else CapCutTextSecondary,
+                  fontSize = 11.sp,
+                  fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                )
+              }
+            }
+          }
+        }
       }
+
       SubMenuType.ADJUST -> {
-        AdjustSubToolbar(
-          adjustSettings = adjustSettings,
-          onAdjustChange = onAdjustChange,
-          onReset = onAdjustReset,
-          onConfirm = onCloseSubMenu
-        )
+        // Adjustments: Brightness, Contrast, Saturation, Warmth
+        var selectedAdjustmentTab by remember { mutableStateOf("Brightness") }
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+              listOf("Brightness", "Contrast", "Saturation", "Warmth").forEach { tab ->
+                Text(
+                  text = tab,
+                  color = if (selectedAdjustmentTab == tab) CapCutTeal else CapCutTextSecondary,
+                  fontSize = 12.sp,
+                  fontWeight = FontWeight.SemiBold,
+                  modifier = Modifier.clickable { selectedAdjustmentTab = tab }
+                )
+              }
+            }
+            IconButton(onClick = onCloseSubMenu, modifier = Modifier.size(30.dp)) {
+              Icon(Icons.Default.Check, contentDescription = "Done", tint = CapCutTeal)
+            }
+          }
+
+          val currentVal = when (selectedAdjustmentTab) {
+            "Brightness" -> uiState.adjustSettings.brightness
+            "Contrast" -> uiState.adjustSettings.contrast
+            "Saturation" -> uiState.adjustSettings.saturation
+            else -> uiState.adjustSettings.warmth
+          }
+
+          Slider(
+            value = currentVal,
+            onValueChange = { newVal ->
+              val updated = when (selectedAdjustmentTab) {
+                "Brightness" -> uiState.adjustSettings.copy(brightness = newVal)
+                "Contrast" -> uiState.adjustSettings.copy(contrast = newVal)
+                "Saturation" -> uiState.adjustSettings.copy(saturation = newVal)
+                else -> uiState.adjustSettings.copy(warmth = newVal)
+              }
+              onUpdateAdjust(updated)
+            },
+            valueRange = -100f..100f,
+            colors = SliderDefaults.colors(thumbColor = CapCutTeal, activeTrackColor = CapCutTeal)
+          )
+        }
       }
-      SubMenuType.ASPECT_RATIO -> {
-        AspectRatioSubToolbar(
-          currentRatio = aspectRatio,
-          onSelectRatio = onAspectRatioSelect,
-          onConfirm = onCloseSubMenu
-        )
+
+      SubMenuType.AUDIO_OPTIONS -> {
+        // Audio sub-menu
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp),
+          horizontalArrangement = Arrangement.spacedBy(16.dp),
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          IconButton(onClick = onCloseSubMenu, modifier = Modifier.size(42.dp)) {
+            Icon(Icons.Default.Check, contentDescription = "Done", tint = CapCutTeal)
+          }
+          ToolIconItem("Sounds", Icons.Default.MusicNote) { onAddAudio("Lofi Chill Beats", "BGM") }
+          ToolIconItem("Sound FX", Icons.Default.Audiotrack, onOpenSfxDialog)
+          ToolIconItem("Voiceover", Icons.Default.Mic, onOpenVoiceoverDialog)
+          ToolIconItem("Captions", Icons.Default.Subtitles, onAddCaptions)
+        }
       }
-      SubMenuType.TEXT -> {
-        TextSubToolbar(
-          onBack = onCloseSubMenu,
-          onAddText = onAddTextClick,
-          onAutoCaptions = onAutoCaptionsClick
-        )
-      }
-      SubMenuType.AUDIO -> {
-        AudioSubToolbar(
-          onBack = onCloseSubMenu,
-          onAddAudio = onAddAudioClick
-        )
-      }
-      SubMenuType.EFFECTS -> {
-        EffectsSubToolbar(
-          onBack = onCloseSubMenu
-        )
+
+      else -> {
+        Row(
+          modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+          horizontalArrangement = Arrangement.End
+        ) {
+          IconButton(onClick = onCloseSubMenu) {
+            Icon(Icons.Default.Close, contentDescription = "Close", tint = CapCutTextPrimary)
+          }
+        }
       }
     }
   }
 }
 
-// 1. Primary Bottom Toolbar (scrolling horizontal bar)
 @Composable
-private fun MainMenuToolbar(
-  onToolClick: (MainTool) -> Unit
-) {
-  val scrollState = rememberScrollState()
-
-  Row(
-    modifier = Modifier
-      .fillMaxWidth()
-      .height(68.dp)
-      .horizontalScroll(scrollState)
-      .padding(horizontal = 8.dp),
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(16.dp)
-  ) {
-    MainTool.entries.forEach { tool ->
-      ToolButton(
-        label = tool.label,
-        icon = tool.icon,
-        badge = tool.badge,
-        onClick = { onToolClick(tool) },
-        testTag = "main_tool_${tool.id}"
-      )
-    }
-  }
-}
-
-@Composable
-private fun ToolButton(
-  label: String,
+private fun ToolIconItem(
+  title: String,
   icon: ImageVector,
-  badge: String? = null,
-  onClick: () -> Unit,
-  testTag: String
+  onClick: () -> Unit
 ) {
   Column(
-    modifier = Modifier
-      .width(52.dp)
-      .clickable { onClick() }
-      .padding(vertical = 4.dp)
-      .testTag(testTag),
     horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.Center
-  ) {
-    Box(contentAlignment = Alignment.TopEnd) {
-      Icon(
-        imageVector = icon,
-        contentDescription = label,
-        tint = CapCutTextPrimary,
-        modifier = Modifier.size(24.dp)
-      )
-
-      // Badges: "AI" (Cyan) or "PRO" (Purple Diamond)
-      if (badge == "AI") {
-        Box(
-          modifier = Modifier
-            .offset(x = 10.dp, y = (-6).dp)
-            .clip(RoundedCornerShape(4.dp))
-            .background(CapCutTeal)
-            .padding(horizontal = 3.dp, vertical = 1.dp)
-        ) {
-          Text(
-            text = "AI",
-            color = Color.Black,
-            fontSize = 7.sp,
-            fontWeight = FontWeight.Black
-          )
-        }
-      } else if (badge == "PRO") {
-        Box(
-          modifier = Modifier
-            .offset(x = 8.dp, y = (-6).dp)
-            .size(12.dp)
-            .clip(CircleShape)
-            .background(CapCutPurple),
-          contentAlignment = Alignment.Center
-        ) {
-          Icon(
-            imageVector = Icons.Default.Diamond,
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.size(8.dp)
-          )
-        }
-      }
-    }
-
-    Spacer(modifier = Modifier.height(4.dp))
-
-    Text(
-      text = label,
-      color = CapCutTextPrimary,
-      fontSize = 10.sp,
-      fontWeight = FontWeight.Normal,
-      maxLines = 1
-    )
-  }
-}
-
-// 2. Sub-Toolbar: Clip Edit
-@Composable
-private fun ClipEditSubToolbar(
-  onBack: () -> Unit,
-  onSplit: () -> Unit,
-  onSpeed: () -> Unit,
-  onVolume: () -> Unit,
-  onDuplicate: () -> Unit,
-  onDelete: () -> Unit,
-  onFilters: () -> Unit,
-  onAdjust: () -> Unit
-) {
-  val scrollState = rememberScrollState()
-
-  Row(
     modifier = Modifier
-      .fillMaxWidth()
-      .height(68.dp)
-      .padding(horizontal = 6.dp),
-    verticalAlignment = Alignment.CenterVertically
+      .clickable { onClick() }
+      .padding(vertical = 4.dp, horizontal = 4.dp)
   ) {
-    IconButton(
-      onClick = onBack,
-      modifier = Modifier.size(40.dp).testTag("clip_edit_back_button")
+    Box(
+      modifier = Modifier
+        .size(40.dp)
+        .clip(RoundedCornerShape(10.dp))
+        .background(CapCutSurfaceVariant),
+      contentAlignment = Alignment.Center
     ) {
       Icon(
-        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-        contentDescription = "Back",
+        imageVector = icon,
+        contentDescription = title,
         tint = CapCutTextPrimary,
         modifier = Modifier.size(20.dp)
       )
     }
-
-    Row(
-      modifier = Modifier
-        .weight(1f)
-        .horizontalScroll(scrollState),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-      ToolButton(label = "Split", icon = Icons.Default.GraphicEq, onClick = onSplit, testTag = "subtool_split")
-      ToolButton(label = "Speed", icon = Icons.Default.Speed, onClick = onSpeed, testTag = "subtool_speed")
-      ToolButton(label = "Volume", icon = Icons.Default.VolumeUp, onClick = onVolume, testTag = "subtool_volume")
-      ToolButton(label = "Duplicate", icon = Icons.Default.Transform, onClick = onDuplicate, testTag = "subtool_duplicate")
-      ToolButton(label = "Delete", icon = Icons.Default.Delete, onClick = onDelete, testTag = "subtool_delete")
-      ToolButton(label = "Animation", icon = Icons.Default.Animation, onClick = {}, testTag = "subtool_animation")
-      ToolButton(label = "Filters", icon = Icons.Default.Person, onClick = onFilters, testTag = "subtool_filters")
-      ToolButton(label = "Adjust", icon = Icons.Default.Person, onClick = onAdjust, testTag = "subtool_adjust")
-    }
-  }
-}
-
-// Sub-Toolbar: Speed
-@Composable
-private fun SpeedSubToolbar(
-  currentSpeed: Float,
-  onSpeedChange: (Float) -> Unit,
-  onConfirm: () -> Unit
-) {
-  val speedPresets = listOf(0.5f, 1.0f, 1.5f, 2.0f, 5.0f)
-
-  Row(
-    modifier = Modifier
-      .fillMaxWidth()
-      .height(68.dp)
-      .padding(horizontal = 12.dp),
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.SpaceBetween
-  ) {
-    Row(
-      modifier = Modifier.weight(1f),
-      horizontalArrangement = Arrangement.spacedBy(10.dp),
-      verticalAlignment = Alignment.CenterVertically
-    ) {
-      Text(
-        text = "Speed: ${currentSpeed}x",
-        color = CapCutTeal,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.Bold
-      )
-
-      speedPresets.forEach { speed ->
-        val isSelected = (currentSpeed - speed) in -0.05f..0.05f
-        Box(
-          modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(if (isSelected) CapCutTeal else Color(0xFF22242B))
-            .clickable { onSpeedChange(speed) }
-            .padding(horizontal = 10.dp, vertical = 6.dp)
-            .testTag("speed_${speed}x"),
-          contentAlignment = Alignment.Center
-        ) {
-          Text(
-            text = "${speed}x",
-            color = if (isSelected) Color.Black else CapCutTextPrimary,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold
-          )
-        }
-      }
-    }
-
-    IconButton(
-      onClick = onConfirm,
-      modifier = Modifier.size(36.dp).testTag("speed_confirm_button")
-    ) {
-      Icon(
-        imageVector = Icons.Default.Check,
-        contentDescription = "Confirm",
-        tint = CapCutTeal,
-        modifier = Modifier.size(22.dp)
-      )
-    }
-  }
-}
-
-// Sub-Toolbar: Volume
-@Composable
-private fun VolumeSubToolbar(
-  currentVolume: Float,
-  onVolumeChange: (Float) -> Unit,
-  onConfirm: () -> Unit
-) {
-  Row(
-    modifier = Modifier
-      .fillMaxWidth()
-      .height(68.dp)
-      .padding(horizontal = 12.dp),
-    verticalAlignment = Alignment.CenterVertically
-  ) {
-    Icon(
-      imageVector = Icons.Default.VolumeUp,
-      contentDescription = null,
-      tint = CapCutTeal,
-      modifier = Modifier.size(22.dp)
-    )
-
-    Spacer(modifier = Modifier.width(8.dp))
-
+    Spacer(modifier = Modifier.height(4.dp))
     Text(
-      text = "${(currentVolume * 100).toInt()}%",
+      text = title,
       color = CapCutTextPrimary,
-      fontSize = 12.sp,
-      fontWeight = FontWeight.Bold,
-      modifier = Modifier.width(42.dp)
+      fontSize = 11.sp,
+      fontWeight = FontWeight.Medium
     )
-
-    Slider(
-      value = currentVolume,
-      onValueChange = onVolumeChange,
-      valueRange = 0f..2.0f,
-      colors = SliderDefaults.colors(
-        thumbColor = CapCutTeal,
-        activeTrackColor = CapCutTeal,
-        inactiveTrackColor = Color(0xFF33353E)
-      ),
-      modifier = Modifier
-        .weight(1f)
-        .testTag("volume_slider")
-    )
-
-    IconButton(
-      onClick = onConfirm,
-      modifier = Modifier.size(36.dp).testTag("volume_confirm_button")
-    ) {
-      Icon(
-        imageVector = Icons.Default.Check,
-        contentDescription = "Confirm",
-        tint = CapCutTeal,
-        modifier = Modifier.size(22.dp)
-      )
-    }
-  }
-}
-
-// 3. Sub-Toolbar: Filters
-@Composable
-private fun FiltersSubToolbar(
-  filters: List<FilterItem>,
-  currentFilter: FilterItem,
-  intensity: Float,
-  onFilterSelect: (FilterItem) -> Unit,
-  onIntensityChange: (Float) -> Unit,
-  onConfirm: () -> Unit
-) {
-  Column(
-    modifier = Modifier
-      .fillMaxWidth()
-      .height(68.dp)
-      .padding(horizontal = 8.dp),
-    verticalArrangement = Arrangement.Center
-  ) {
-    Row(
-      modifier = Modifier.fillMaxWidth(),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-      // Horizontal Filter Pills
-      val scrollState = rememberScrollState()
-      Row(
-        modifier = Modifier
-          .weight(1f)
-          .horizontalScroll(scrollState),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-      ) {
-        filters.forEach { filter ->
-          val isSelected = filter.id == currentFilter.id
-          Box(
-            modifier = Modifier
-              .clip(RoundedCornerShape(16.dp))
-              .background(if (isSelected) CapCutTeal else Color(0xFF23252B))
-              .clickable { onFilterSelect(filter) }
-              .padding(horizontal = 12.dp, vertical = 6.dp)
-              .testTag("filter_pill_${filter.id}"),
-            contentAlignment = Alignment.Center
-          ) {
-            Text(
-              text = filter.name,
-              color = if (isSelected) Color.Black else CapCutTextPrimary,
-              fontSize = 11.sp,
-              fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-            )
-          }
-        }
-      }
-
-      // Confirm Checkmark
-      IconButton(
-        onClick = onConfirm,
-        modifier = Modifier.size(36.dp).testTag("filter_confirm_button")
-      ) {
-        Icon(
-          imageVector = Icons.Default.Check,
-          contentDescription = "Confirm filter",
-          tint = CapCutTeal,
-          modifier = Modifier.size(22.dp)
-        )
-      }
-    }
-  }
-}
-
-// 4. Sub-Toolbar: Adjust
-@Composable
-private fun AdjustSubToolbar(
-  adjustSettings: AdjustSettings,
-  onAdjustChange: (AdjustSettings) -> Unit,
-  onReset: () -> Unit,
-  onConfirm: () -> Unit
-) {
-  var selectedTab by remember { mutableStateOf("brightness") }
-
-  Column(
-    modifier = Modifier
-      .fillMaxWidth()
-      .height(68.dp)
-      .padding(horizontal = 8.dp),
-    verticalArrangement = Arrangement.Center
-  ) {
-    Row(
-      modifier = Modifier.fillMaxWidth(),
-      verticalAlignment = Alignment.CenterVertically
-    ) {
-      // Reset button
-      IconButton(
-        onClick = onReset,
-        modifier = Modifier.size(32.dp).testTag("adjust_reset_button")
-      ) {
-        Icon(
-          imageVector = Icons.Default.Refresh,
-          contentDescription = "Reset adjust",
-          tint = CapCutTextSecondary,
-          modifier = Modifier.size(18.dp)
-        )
-      }
-
-      // Slider for the selected parameter
-      Slider(
-        value = when (selectedTab) {
-          "brightness" -> adjustSettings.brightness
-          "contrast" -> adjustSettings.contrast
-          "saturation" -> adjustSettings.saturation
-          "vignette" -> adjustSettings.vignette
-          else -> 0f
-        },
-        onValueChange = { newVal ->
-          when (selectedTab) {
-            "brightness" -> onAdjustChange(adjustSettings.copy(brightness = newVal))
-            "contrast" -> onAdjustChange(adjustSettings.copy(contrast = newVal))
-            "saturation" -> onAdjustChange(adjustSettings.copy(saturation = newVal))
-            "vignette" -> onAdjustChange(adjustSettings.copy(vignette = newVal))
-          }
-        },
-        valueRange = if (selectedTab == "vignette") 0f..100f else -50f..50f,
-        colors = SliderDefaults.colors(
-          thumbColor = CapCutTeal,
-          activeTrackColor = CapCutTeal,
-          inactiveTrackColor = Color(0xFF33353E)
-        ),
-        modifier = Modifier.weight(1f).testTag("adjust_slider")
-      )
-
-      // Confirm Checkmark
-      IconButton(
-        onClick = onConfirm,
-        modifier = Modifier.size(32.dp).testTag("adjust_confirm_button")
-      ) {
-        Icon(
-          imageVector = Icons.Default.Check,
-          contentDescription = "Confirm adjust",
-          tint = CapCutTeal,
-          modifier = Modifier.size(22.dp)
-        )
-      }
-    }
-  }
-}
-
-// 5. Sub-Toolbar: Aspect Ratio
-@Composable
-private fun AspectRatioSubToolbar(
-  currentRatio: AspectRatioOption,
-  onSelectRatio: (AspectRatioOption) -> Unit,
-  onConfirm: () -> Unit
-) {
-  Row(
-    modifier = Modifier
-      .fillMaxWidth()
-      .height(68.dp)
-      .padding(horizontal = 12.dp),
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.SpaceBetween
-  ) {
-    Row(
-      modifier = Modifier.weight(1f),
-      horizontalArrangement = Arrangement.spacedBy(8.dp),
-      verticalAlignment = Alignment.CenterVertically
-    ) {
-      AspectRatioOption.entries.forEach { option ->
-        val isSelected = option == currentRatio
-        Box(
-          modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(if (isSelected) CapCutTeal else Color(0xFF22242B))
-            .clickable { onSelectRatio(option) }
-            .padding(horizontal = 10.dp, vertical = 6.dp)
-            .testTag("aspect_ratio_${option.name}"),
-          contentAlignment = Alignment.Center
-        ) {
-          Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-              text = option.label,
-              color = if (isSelected) Color.Black else CapCutTextPrimary,
-              fontSize = 11.sp,
-              fontWeight = FontWeight.Bold
-            )
-            Text(
-              text = option.displayTag,
-              color = if (isSelected) Color.Black else CapCutTextSecondary,
-              fontSize = 8.sp
-            )
-          }
-        }
-      }
-    }
-
-    IconButton(
-      onClick = onConfirm,
-      modifier = Modifier.size(36.dp).testTag("aspect_ratio_confirm")
-    ) {
-      Icon(
-        imageVector = Icons.Default.Check,
-        contentDescription = "Done",
-        tint = CapCutTeal,
-        modifier = Modifier.size(22.dp)
-      )
-    }
-  }
-}
-
-// 6. Sub-Toolbar: Text
-@Composable
-private fun TextSubToolbar(
-  onBack: () -> Unit,
-  onAddText: () -> Unit,
-  onAutoCaptions: () -> Unit
-) {
-  Row(
-    modifier = Modifier
-      .fillMaxWidth()
-      .height(68.dp)
-      .padding(horizontal = 8.dp),
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(16.dp)
-  ) {
-    IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
-      Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = CapCutTextPrimary)
-    }
-    ToolButton(label = "Add text", icon = Icons.Default.Person, onClick = onAddText, testTag = "text_add")
-    ToolButton(label = "Auto captions", icon = Icons.Default.Person, badge = "AI", onClick = onAutoCaptions, testTag = "text_auto_captions")
-    ToolButton(label = "Templates", icon = Icons.Default.Person, onClick = onAddText, testTag = "text_templates")
-    ToolButton(label = "Auto lyrics", icon = Icons.Default.Person, onClick = onAutoCaptions, testTag = "text_lyrics")
-  }
-}
-
-// 7. Sub-Toolbar: Audio
-@Composable
-private fun AudioSubToolbar(
-  onBack: () -> Unit,
-  onAddAudio: () -> Unit
-) {
-  Row(
-    modifier = Modifier
-      .fillMaxWidth()
-      .height(68.dp)
-      .padding(horizontal = 8.dp),
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(16.dp)
-  ) {
-    IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
-      Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = CapCutTextPrimary)
-    }
-    ToolButton(label = "Sounds", icon = Icons.Default.Person, onClick = onAddAudio, testTag = "audio_sounds")
-    ToolButton(label = "Copyright", icon = Icons.Default.Person, onClick = onAddAudio, testTag = "audio_copyright")
-    ToolButton(label = "Effects", icon = Icons.Default.Person, onClick = onAddAudio, testTag = "audio_effects")
-    ToolButton(label = "Extracted", icon = Icons.Default.Person, onClick = onAddAudio, testTag = "audio_extracted")
-    ToolButton(label = "Voiceover", icon = Icons.Default.Person, onClick = onAddAudio, testTag = "audio_voiceover")
-  }
-}
-
-// 8. Sub-Toolbar: Effects
-@Composable
-private fun EffectsSubToolbar(
-  onBack: () -> Unit
-) {
-  Row(
-    modifier = Modifier
-      .fillMaxWidth()
-      .height(68.dp)
-      .padding(horizontal = 8.dp),
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(16.dp)
-  ) {
-    IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
-      Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = CapCutTextPrimary)
-    }
-    ToolButton(label = "Video effects", icon = Icons.Default.Person, onClick = {}, testTag = "fx_video")
-    ToolButton(label = "Body effects", icon = Icons.Default.Person, onClick = {}, testTag = "fx_body")
-    ToolButton(label = "Photo effects", icon = Icons.Default.Person, onClick = {}, testTag = "fx_photo")
-    ToolButton(label = "AI effects", icon = Icons.Default.Person, badge = "AI", onClick = {}, testTag = "fx_ai")
   }
 }

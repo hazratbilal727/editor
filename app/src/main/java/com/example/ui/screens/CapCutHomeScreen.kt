@@ -1,6 +1,6 @@
 package com.example.ui.screens
 
-import androidx.compose.foundation.Image
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -10,10 +10,10 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -30,36 +30,35 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.CloudQueue
-import androidx.compose.material.icons.filled.Diamond
+import androidx.compose.material.icons.filled.ContentCut
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.Laptop
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MotionPhotosAuto
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PhotoAlbum
-import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.SmartDisplay
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Subtitles
-import androidx.compose.material.icons.filled.Transform
-import androidx.compose.material.icons.filled.VideoLibrary
-import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,73 +66,102 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.R
+import coil.compose.AsyncImage
+import com.example.data.AppDatabase
+import com.example.data.ProjectEntity
+import com.example.model.HomeToolItem
+import com.example.ui.theme.CapCutBackground
 import com.example.ui.theme.CapCutPurple
+import com.example.ui.theme.CapCutSurface
+import com.example.ui.theme.CapCutSurfaceElevated
+import com.example.ui.theme.CapCutSurfaceVariant
 import com.example.ui.theme.CapCutTeal
-
-data class HomeToolItem(
-  val id: String,
-  val label: String,
-  val icon: ImageVector,
-  val hasSubBadge: Boolean = false
-)
+import com.example.ui.theme.CapCutTextPrimary
+import com.example.ui.theme.CapCutTextSecondary
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun CapCutHomeScreen(
   onNewVideoClick: () -> Unit,
   onEditPhotoClick: () -> Unit,
-  onOpenProject: (String) -> Unit,
-  onToolClick: (String) -> Unit,
-  modifier: Modifier = Modifier
+  onOpenProject: (String) -> Unit
 ) {
+  val context = LocalContext.current
   var selectedTab by remember { mutableIntStateOf(0) }
-  val gridState = rememberLazyGridState()
-
-  // Detect if scrolled down to display sticky collapsed header bar (as in Screenshot 1)
-  val isScrolled by remember {
-    derivedStateOf {
-      gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 180
-    }
-  }
+  val scope = rememberCoroutineScope()
 
   val homeTools = remember {
     listOf(
       HomeToolItem("autocut", "AutoCut", Icons.Default.SmartDisplay),
       HomeToolItem("retouch", "Retouch", Icons.Default.Face),
-      HomeToolItem("ai_generator", "AI generator", Icons.Default.AutoAwesome, hasSubBadge = true),
-      HomeToolItem("photo_tools", "Photo tools", Icons.Default.PhotoLibrary),
-      HomeToolItem("shoot_record", "Shoot and\nrecord", Icons.Default.CameraAlt, hasSubBadge = true),
-      HomeToolItem("auto_enhance", "Auto enhance", Icons.Default.AutoFixHigh),
-      HomeToolItem("cover_maker", "Cover maker", Icons.Default.PhotoAlbum),
-      HomeToolItem("auto_captions", "Auto captions", Icons.Default.Subtitles),
-      HomeToolItem("remove_bg", "Remove\nbackground", Icons.Default.Transform),
-      HomeToolItem("ai_photo_editor", "AI photo editor", Icons.Default.Image),
-      HomeToolItem("space", "Space", Icons.Default.CloudQueue),
-      HomeToolItem("marketing_tools", "Marketing tools", Icons.Default.ShoppingBag, hasSubBadge = true),
-      HomeToolItem("record", "Record", Icons.Default.Mic),
-      HomeToolItem("avatar_tools", "Avatar tools", Icons.Default.Person, hasSubBadge = true),
-      HomeToolItem("generate_media", "Generate media", Icons.Default.MotionPhotosAuto),
-      HomeToolItem("desktop_editor", "Desktop editor", Icons.Default.Laptop),
-      HomeToolItem("all_tools", "All tools (28)", Icons.Default.GridView)
+      HomeToolItem("captions", "Captions", Icons.Default.Subtitles),
+      HomeToolItem("effects", "Effects", Icons.Default.AutoAwesome),
+      HomeToolItem("background", "Cutout", Icons.Default.ContentCut),
+      HomeToolItem("prompter", "Prompter", Icons.Default.CameraAlt),
+      HomeToolItem("extract_audio", "Extract Audio", Icons.Default.Mic),
+      HomeToolItem("speed", "Speed Curve", Icons.Default.Speed)
     )
   }
 
   Scaffold(
-    modifier = modifier.fillMaxSize(),
-    containerColor = Color.White,
-    contentWindowInsets = WindowInsets(0, 0, 0, 0),
     bottomBar = {
-      CapCutHomeBottomBar(
-        selectedTab = selectedTab,
-        onTabSelected = { selectedTab = it }
-      )
-    }
+      NavigationBar(
+        containerColor = CapCutSurface,
+        contentColor = CapCutTextPrimary,
+        tonalElevation = 0.dp
+      ) {
+        NavigationBarItem(
+          icon = { Icon(Icons.Default.ContentCut, contentDescription = "Edit") },
+          label = { Text("Edit", fontSize = 11.sp, fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal) },
+          selected = selectedTab == 0,
+          onClick = { selectedTab = 0 },
+          colors = NavigationBarItemDefaults.colors(
+            selectedIconColor = CapCutTeal,
+            selectedTextColor = CapCutTeal,
+            unselectedIconColor = CapCutTextSecondary,
+            unselectedTextColor = CapCutTextSecondary,
+            indicatorColor = Color.Transparent
+          )
+        )
+        NavigationBarItem(
+          icon = { Icon(Icons.Default.Folder, contentDescription = "Projects") },
+          label = { Text("Projects", fontSize = 11.sp, fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal) },
+          selected = selectedTab == 1,
+          onClick = { selectedTab = 1 },
+          colors = NavigationBarItemDefaults.colors(
+            selectedIconColor = CapCutTeal,
+            selectedTextColor = CapCutTeal,
+            unselectedIconColor = CapCutTextSecondary,
+            unselectedTextColor = CapCutTextSecondary,
+            indicatorColor = Color.Transparent
+          )
+        )
+        NavigationBarItem(
+          icon = { Icon(Icons.Default.Person, contentDescription = "Me") },
+          label = { Text("Me", fontSize = 11.sp, fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Normal) },
+          selected = selectedTab == 2,
+          onClick = { selectedTab = 2 },
+          colors = NavigationBarItemDefaults.colors(
+            selectedIconColor = CapCutTeal,
+            selectedTextColor = CapCutTeal,
+            unselectedIconColor = CapCutTextSecondary,
+            unselectedTextColor = CapCutTextSecondary,
+            indicatorColor = Color.Transparent
+          )
+        )
+      }
+    },
+    containerColor = CapCutBackground
   ) { paddingValues ->
     Box(
       modifier = Modifier
@@ -141,42 +169,24 @@ fun CapCutHomeScreen(
         .padding(paddingValues)
     ) {
       when (selectedTab) {
-        0 -> {
-          // TAB 0: EDIT / HOME SCREEN
-          EditTabContent(
-            gridState = gridState,
-            homeTools = homeTools,
-            isScrolled = isScrolled,
-            onNewVideoClick = onNewVideoClick,
-            onEditPhotoClick = onEditPhotoClick,
-            onOpenProject = onOpenProject,
-            onToolClick = onToolClick
-          )
-        }
-        1 -> {
-          // TAB 1: TEMPLATES
-          TemplatesTabContent(onTemplateClick = onNewVideoClick)
-        }
-        2 -> {
-          // TAB 2: AI LAB
-          AiLabTabContent(onToolClick = onToolClick)
-        }
-        3 -> {
-          // TAB 3: PROJECTS (SCREENSHOT 1)
-          ProjectsScreen(
-            onOpenProject = onOpenProject,
-            onCreateProject = onNewVideoClick,
-            onSearchClick = { onToolClick("search_projects") }
-          )
-        }
-        4 -> {
-          // TAB 4: ME (SCREENSHOT 2)
-          MeScreen(
-            onSettingsClick = { onToolClick("settings") },
-            onProClaimClick = { onToolClick("pro_subscription") },
-            onMenuItemClick = onToolClick
-          )
-        }
+        0 -> EditTabContent(
+          homeTools = homeTools,
+          onNewVideoClick = onNewVideoClick,
+          onEditPhotoClick = onEditPhotoClick,
+          onOpenProject = onOpenProject,
+          onToolClick = { toolId ->
+            when (toolId) {
+              "autocut", "captions", "effects" -> onNewVideoClick()
+              "retouch", "background" -> onEditPhotoClick()
+              else -> Toast.makeText(context, "Tool ready in offline editor", Toast.LENGTH_SHORT).show()
+            }
+          }
+        )
+        1 -> ProjectsScreen(
+          onNewProjectClick = onNewVideoClick,
+          onOpenProject = onOpenProject
+        )
+        2 -> MeScreen()
       }
     }
   }
@@ -184,33 +194,35 @@ fun CapCutHomeScreen(
 
 @Composable
 private fun EditTabContent(
-  gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
   homeTools: List<HomeToolItem>,
-  isScrolled: Boolean,
   onNewVideoClick: () -> Unit,
   onEditPhotoClick: () -> Unit,
   onOpenProject: (String) -> Unit,
   onToolClick: (String) -> Unit
 ) {
+  val context = LocalContext.current
+  val db = remember { AppDatabase.getDatabase(context) }
+  val projects by db.projectDao().getAllProjects().collectAsState(initial = emptyList())
+  val scope = rememberCoroutineScope()
+  val gridState = rememberLazyGridState()
+
   Box(modifier = Modifier.fillMaxSize()) {
-    // Top gradient
+    // Top background gradient glow
     Box(
       modifier = Modifier
         .fillMaxWidth()
-        .height(340.dp)
+        .height(280.dp)
         .background(
           Brush.verticalGradient(
             colors = listOf(
-              Color(0xFF0052D4),
-              Color(0xFF4364F7),
-              Color(0xFF6FB1FC),
-              Color.White
+              Color(0xFF003B99).copy(alpha = 0.45f),
+              Color(0xFF001F54).copy(alpha = 0.2f),
+              CapCutBackground
             )
           )
         )
     )
 
-    // Scrollable Grid
     LazyVerticalGrid(
       columns = GridCells.Fixed(3),
       state = gridState,
@@ -219,7 +231,7 @@ private fun EditTabContent(
         .padding(horizontal = 16.dp),
       contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
       horizontalArrangement = Arrangement.spacedBy(12.dp),
-      verticalArrangement = Arrangement.spacedBy(20.dp)
+      verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
       // Header item
       item(span = { GridItemSpan(3) }) {
@@ -229,46 +241,17 @@ private fun EditTabContent(
             .windowInsetsPadding(WindowInsets.statusBars)
             .padding(top = 4.dp, bottom = 8.dp)
         ) {
+          // Top bar with Search icon on the right
           Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
           ) {
-            // Pro promotion pill
-            Box(
-              modifier = Modifier
-                .clip(RoundedCornerShape(20.dp))
-                .background(Color.White.copy(alpha = 0.95f))
-                .clickable { onToolClick("pro_subscription") }
-                .padding(horizontal = 12.dp, vertical = 7.dp)
-                .testTag("home_pro_pill"),
-              contentAlignment = Alignment.CenterStart
-            ) {
-              Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-              ) {
-                Icon(
-                  imageVector = Icons.Default.Diamond,
-                  contentDescription = "Pro",
-                  tint = CapCutPurple,
-                  modifier = Modifier.size(16.dp)
-                )
-                Text(
-                  text = "Restart Pro for only Rs200",
-                  color = Color(0xFF1E1E24),
-                  fontSize = 12.sp,
-                  fontWeight = FontWeight.SemiBold
-                )
-              }
-            }
-
-            // Search button
             Box(
               modifier = Modifier
                 .size(38.dp)
                 .clip(CircleShape)
-                .background(Color(0xFF0D47A1).copy(alpha = 0.65f))
+                .background(CapCutSurfaceVariant)
                 .clickable { onToolClick("search") }
                 .testTag("home_search_button"),
               contentAlignment = Alignment.Center
@@ -276,187 +259,138 @@ private fun EditTabContent(
               Icon(
                 imageVector = Icons.Default.Search,
                 contentDescription = "Search",
-                tint = Color.White,
+                tint = CapCutTextPrimary,
                 modifier = Modifier.size(20.dp)
               )
             }
           }
 
-          Spacer(modifier = Modifier.height(24.dp))
+          Spacer(modifier = Modifier.height(20.dp))
 
-          // Subtitle & Title: "Video create", "Get started >"
           Text(
             text = "Video create",
-            color = Color.White.copy(alpha = 0.85f),
-            fontSize = 14.sp,
+            color = CapCutTextSecondary,
+            fontSize = 13.sp,
             fontWeight = FontWeight.Medium
           )
-          Spacer(modifier = Modifier.height(2.dp))
+
+          Spacer(modifier = Modifier.height(4.dp))
+
           Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-              .clickable { onNewVideoClick() }
-              .testTag("home_get_started_row")
+            modifier = Modifier.clickable { onNewVideoClick() }
           ) {
             Text(
               text = "Get started",
-              color = Color.White,
-              fontSize = 26.sp,
-              fontWeight = FontWeight.Black
+              color = CapCutTextPrimary,
+              fontSize = 24.sp,
+              fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.width(6.dp))
-            Box(
-              modifier = Modifier
-                .size(20.dp)
-                .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.3f)),
-              contentAlignment = Alignment.Center
-            ) {
-              Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(10.dp)
-              )
-            }
+            Icon(
+              imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+              contentDescription = null,
+              tint = CapCutTextPrimary,
+              modifier = Modifier.size(16.dp)
+            )
           }
 
-          Spacer(modifier = Modifier.height(18.dp))
+          Spacer(modifier = Modifier.height(16.dp))
 
-          // HERO ACTION CARDS ROW
+          // Hero Action Cards: "+ New video" & "Edit photo"
           Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
           ) {
-            // 1. "New video" Card
+            // "+ New video" Card
             Box(
               modifier = Modifier
-                .weight(1.35f)
-                .height(130.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .background(Color(0xFFDFF0FC))
+                .weight(1.3f)
+                .height(115.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(
+                  Brush.linearGradient(
+                    colors = listOf(Color(0xFF0072FF), Color(0xFF00C6FF))
+                  )
+                )
                 .clickable { onNewVideoClick() }
-                .testTag("home_new_video_card"),
-              contentAlignment = Alignment.Center
+                .padding(14.dp)
+                .testTag("hero_new_video_card")
             ) {
               Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.SpaceBetween
               ) {
                 Box(
                   modifier = Modifier
-                    .size(38.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color.Black),
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.25f)),
                   contentAlignment = Alignment.Center
                 ) {
                   Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "New video",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                  )
-                }
-                Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                  text = "New video",
-                  color = Color.Black,
-                  fontSize = 15.sp,
-                  fontWeight = FontWeight.Bold
-                )
-              }
-            }
-
-            // 2. "Edit photo" Card
-            Box(
-              modifier = Modifier
-                .weight(1.0f)
-                .height(130.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .background(Color(0xFFDFF0FC))
-                .clickable { onEditPhotoClick() }
-                .testTag("home_edit_photo_card"),
-              contentAlignment = Alignment.Center
-            ) {
-              Box(
-                modifier = Modifier
-                  .align(Alignment.TopCenter)
-                  .padding(top = 8.dp)
-                  .clip(RoundedCornerShape(10.dp))
-                  .background(Color.White.copy(alpha = 0.8f))
-                  .padding(horizontal = 8.dp, vertical = 2.dp)
-              ) {
-                Text(
-                  text = "Nano Banana 2.1",
-                  color = Color(0xFF2C3E50),
-                  fontSize = 9.sp,
-                  fontWeight = FontWeight.SemiBold
-                )
-              }
-
-              Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-              ) {
-                Spacer(modifier = Modifier.height(14.dp))
-                Box(
-                  modifier = Modifier
-                    .size(38.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color.Black),
-                  contentAlignment = Alignment.Center
-                ) {
-                  Icon(
-                    imageVector = Icons.Default.Image,
-                    contentDescription = "Edit photo",
+                    contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(22.dp)
                   )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                  text = "Edit photo",
-                  color = Color.Black,
-                  fontSize = 14.sp,
-                  fontWeight = FontWeight.Bold
-                )
+                Column {
+                  Text(
+                    text = "New video",
+                    color = Color.White,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold
+                  )
+                  Text(
+                    text = "Pick gallery clips",
+                    color = Color.White.copy(alpha = 0.85f),
+                    fontSize = 11.sp
+                  )
+                }
               }
             }
-          }
 
-          Spacer(modifier = Modifier.height(20.dp))
-
-          // RECENT PROJECTS STRIP ("1015-01")
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-          ) {
-            Text(
-              text = "1015-01",
-              color = Color(0xFF8E99A8),
-              fontSize = 12.sp,
-              fontWeight = FontWeight.Bold,
-              modifier = Modifier.width(60.dp)
-            )
-
-            // Draft preview cards
-            repeat(3) { index ->
-              Box(
-                modifier = Modifier
-                  .size(62.dp)
-                  .clip(RoundedCornerShape(12.dp))
-                  .background(Color(0xFFF1F3F6))
-                  .clickable { onOpenProject("1015-01") }
-                  .testTag("home_draft_card_$index"),
-                contentAlignment = Alignment.Center
+            // "Edit photo" Card
+            Box(
+              modifier = Modifier
+                .weight(1f)
+                .height(115.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(CapCutSurfaceElevated)
+                .clickable { onEditPhotoClick() }
+                .padding(14.dp)
+                .testTag("hero_edit_photo_card")
+            ) {
+              Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.SpaceBetween
               ) {
-                if (index == 0) {
-                  Image(
-                    painter = painterResource(id = R.drawable.img_video_clip),
-                    contentDescription = "Project draft",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                Box(
+                  modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(CapCutPurple.copy(alpha = 0.25f)),
+                  contentAlignment = Alignment.Center
+                ) {
+                  Icon(
+                    imageVector = Icons.Default.Image,
+                    contentDescription = null,
+                    tint = CapCutPurple,
+                    modifier = Modifier.size(20.dp)
+                  )
+                }
+                Column {
+                  Text(
+                    text = "Edit photo",
+                    color = CapCutTextPrimary,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
+                  )
+                  Text(
+                    text = "Effects & retouch",
+                    color = CapCutTextSecondary,
+                    fontSize = 11.sp
                   )
                 }
               }
@@ -465,274 +399,202 @@ private fun EditTabContent(
         }
       }
 
-      // Quick tools items
-      items(homeTools) { tool ->
-        HomeToolGridItem(
-          tool = tool,
-          onClick = { onToolClick(tool.id) }
-        )
-      }
-    }
-
-    // Sticky Top Bar when scrolled down
-    if (isScrolled) {
-      Row(
-        modifier = Modifier
-          .fillMaxWidth()
-          .windowInsetsPadding(WindowInsets.statusBars)
-          .height(58.dp)
-          .background(Color.White)
-          .padding(horizontal = 16.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-      ) {
-        Box(
-          modifier = Modifier
-            .weight(1.35f)
-            .height(44.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color(0xFFDFF0FC))
-            .clickable { onNewVideoClick() }
-            .testTag("sticky_new_video_pill"),
-          contentAlignment = Alignment.Center
-        ) {
-          Box(
-            modifier = Modifier
-              .size(26.dp)
-              .clip(RoundedCornerShape(6.dp))
-              .background(Color.Black),
-            contentAlignment = Alignment.Center
+      // Tools Row (Span 3)
+      item(span = { GridItemSpan(3) }) {
+        Column {
+          Text(
+            text = "Popular tools",
+            color = CapCutTextPrimary,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 12.dp)
+          )
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
           ) {
-            Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+            homeTools.take(4).forEach { tool ->
+              HomeToolButton(tool) { onToolClick(tool.id) }
+            }
           }
-        }
-
-        Box(
-          modifier = Modifier
-            .weight(1f)
-            .height(44.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color(0xFFDFF0FC))
-            .clickable { onEditPhotoClick() }
-            .testTag("sticky_edit_photo_pill"),
-          contentAlignment = Alignment.Center
-        ) {
-          Box(
-            modifier = Modifier
-              .size(26.dp)
-              .clip(RoundedCornerShape(6.dp))
-              .background(Color.Black),
-            contentAlignment = Alignment.Center
+          Spacer(modifier = Modifier.height(12.dp))
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
           ) {
-            Icon(Icons.Default.Image, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+            homeTools.drop(4).forEach { tool ->
+              HomeToolButton(tool) { onToolClick(tool.id) }
+            }
           }
         }
       }
-    }
-  }
-}
 
-@Composable
-private fun TemplatesTabContent(onTemplateClick: () -> Unit) {
-  Column(
-    modifier = Modifier
-      .fillMaxSize()
-      .windowInsetsPadding(WindowInsets.statusBars)
-      .padding(16.dp)
-  ) {
-    Text(
-      text = "Templates",
-      color = Color(0xFF1E1E24),
-      fontSize = 24.sp,
-      fontWeight = FontWeight.Black
-    )
-    Spacer(modifier = Modifier.height(16.dp))
-
-    // Sample template cards
-    LazyVerticalGrid(
-      columns = GridCells.Fixed(2),
-      horizontalArrangement = Arrangement.spacedBy(12.dp),
-      verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-      items(6) { index ->
-        Box(
+      // Recent Projects Header
+      item(span = { GridItemSpan(3) }) {
+        Row(
           modifier = Modifier
             .fillMaxWidth()
-            .height(180.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF1E2026))
-            .clickable { onTemplateClick() },
-          contentAlignment = Alignment.BottomStart
+            .padding(top = 16.dp, bottom = 4.dp),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
         ) {
-          Image(
-            painter = painterResource(id = if (index % 2 == 0) R.drawable.img_video_preview else R.drawable.img_nature_mountains),
-            contentDescription = "Template",
-            modifier = Modifier.fillMaxSize(),
-            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+          Text(
+            text = "Projects",
+            color = CapCutTextPrimary,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold
           )
+          Text(
+            text = "${projects.size} drafts",
+            color = CapCutTextSecondary,
+            fontSize = 12.sp
+          )
+        }
+      }
+
+      // Projects List or Empty State
+      if (projects.isEmpty()) {
+        item(span = { GridItemSpan(3) }) {
           Box(
             modifier = Modifier
               .fillMaxWidth()
-              .background(Color.Black.copy(alpha = 0.5f))
-              .padding(8.dp)
+              .clip(RoundedCornerShape(12.dp))
+              .background(CapCutSurface)
+              .padding(24.dp),
+            contentAlignment = Alignment.Center
           ) {
-            Text(
-              text = "Viral TikTok Beat #$index",
-              color = Color.White,
-              fontSize = 11.sp,
-              fontWeight = FontWeight.Bold
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+              Icon(Icons.Default.Folder, contentDescription = null, tint = CapCutTextSecondary, modifier = Modifier.size(36.dp))
+              Spacer(modifier = Modifier.height(8.dp))
+              Text("No projects saved yet", color = CapCutTextSecondary, fontSize = 13.sp)
+              Spacer(modifier = Modifier.height(4.dp))
+              Text("Tap + New video above to create your first edit", color = CapCutTeal, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            }
           }
         }
-      }
-    }
-  }
-}
-
-@Composable
-private fun AiLabTabContent(onToolClick: (String) -> Unit) {
-  Column(
-    modifier = Modifier
-      .fillMaxSize()
-      .windowInsetsPadding(WindowInsets.statusBars)
-      .padding(16.dp)
-  ) {
-    Text(
-      text = "AI Lab",
-      color = Color(0xFF1E1E24),
-      fontSize = 24.sp,
-      fontWeight = FontWeight.Black
-    )
-    Spacer(modifier = Modifier.height(16.dp))
-
-    val aiTools = listOf(
-      "AI Avatar Generator" to Icons.Default.Face,
-      "AI Smart Expand" to Icons.Default.AutoFixHigh,
-      "AI Background Remover" to Icons.Default.Transform,
-      "AI Hug & Motion" to Icons.Default.AutoAwesome
-    )
-
-    aiTools.forEach { (title, icon) ->
-      Row(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(vertical = 6.dp)
-          .clip(RoundedCornerShape(12.dp))
-          .background(Color(0xFFF6F7F9))
-          .clickable { onToolClick(title) }
-          .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-      ) {
-        Row(
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-          Icon(icon, contentDescription = null, tint = CapCutPurple, modifier = Modifier.size(28.dp))
-          Text(text = title, color = Color(0xFF1E1E24), fontSize = 15.sp, fontWeight = FontWeight.Bold)
+      } else {
+        items(projects) { project ->
+          ProjectCard(
+            project = project,
+            onClick = { onOpenProject(project.id) },
+            onDelete = {
+              scope.launch {
+                db.projectDao().deleteProjectById(project.id)
+                Toast.makeText(context, "Project deleted", Toast.LENGTH_SHORT).show()
+              }
+            }
+          )
         }
-        Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null, tint = Color(0xFF9EA7B5), modifier = Modifier.size(14.dp))
       }
     }
   }
 }
 
 @Composable
-private fun HomeToolGridItem(
-  tool: HomeToolItem,
-  onClick: () -> Unit
-) {
+private fun HomeToolButton(tool: HomeToolItem, onClick: () -> Unit) {
   Column(
-    modifier = Modifier
-      .fillMaxWidth()
-      .clickable { onClick() }
-      .padding(vertical = 4.dp)
-      .testTag("home_tool_${tool.id}"),
     horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.Center
+    modifier = Modifier
+      .width(72.dp)
+      .clickable { onClick() }
   ) {
-    Box(contentAlignment = Alignment.BottomEnd) {
-      Icon(
-        imageVector = tool.icon,
-        contentDescription = tool.label,
-        tint = Color(0xFF1E1E24),
-        modifier = Modifier.size(32.dp)
-      )
-
-      if (tool.hasSubBadge) {
-        Box(
-          modifier = Modifier
-            .size(10.dp)
-            .clip(CircleShape)
-            .background(Color(0xFF1E1E24))
-        )
-      }
+    Box(
+      modifier = Modifier
+        .size(50.dp)
+        .clip(RoundedCornerShape(14.dp))
+        .background(CapCutSurfaceVariant),
+      contentAlignment = Alignment.Center
+    ) {
+      Icon(tool.icon, contentDescription = tool.title, tint = CapCutTeal, modifier = Modifier.size(24.dp))
     }
-
-    Spacer(modifier = Modifier.height(8.dp))
-
+    Spacer(modifier = Modifier.height(6.dp))
     Text(
-      text = tool.label,
-      color = Color(0xFF1E1E24),
-      fontSize = 12.sp,
+      text = tool.title,
+      color = CapCutTextPrimary,
+      fontSize = 11.sp,
       fontWeight = FontWeight.Medium,
-      textAlign = TextAlign.Center,
-      lineHeight = 14.sp
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis
     )
   }
 }
 
 @Composable
-private fun CapCutHomeBottomBar(
-  selectedTab: Int,
-  onTabSelected: (Int) -> Unit
+fun ProjectCard(
+  project: ProjectEntity,
+  onClick: () -> Unit,
+  onDelete: () -> Unit
 ) {
-  Surface(
-    color = Color.White,
-    shadowElevation = 8.dp,
+  var menuExpanded by remember { mutableStateOf(false) }
+  val dateFormat = remember { SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()) }
+
+  Column(
     modifier = Modifier
       .fillMaxWidth()
-      .windowInsetsPadding(WindowInsets.navigationBars)
+      .clip(RoundedCornerShape(10.dp))
+      .background(CapCutSurface)
+      .clickable { onClick() }
   ) {
+    Box(
+      modifier = Modifier
+        .fillMaxWidth()
+        .aspectRatio(1f)
+        .background(CapCutSurfaceVariant)
+    ) {
+      if (project.thumbnailUri != null) {
+        AsyncImage(
+          model = project.thumbnailUri,
+          contentDescription = project.title,
+          contentScale = ContentScale.Crop,
+          modifier = Modifier.fillMaxSize()
+        )
+      } else {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+          Icon(Icons.Default.SmartDisplay, contentDescription = null, tint = CapCutTextSecondary, modifier = Modifier.size(32.dp))
+        }
+      }
+
+      // Duration badge
+      Box(
+        modifier = Modifier
+          .align(Alignment.BottomEnd)
+          .padding(6.dp)
+          .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
+          .padding(horizontal = 4.dp, vertical = 2.dp)
+      ) {
+        val totalSec = project.durationMs / 1000
+        Text(text = String.format("%02d:%02d", totalSec / 60, totalSec % 60), color = Color.White, fontSize = 9.sp)
+      }
+    }
+
     Row(
       modifier = Modifier
         .fillMaxWidth()
-        .height(60.dp)
-        .padding(horizontal = 8.dp),
-      horizontalArrangement = Arrangement.SpaceAround,
+        .padding(horizontal = 8.dp, vertical = 6.dp),
+      horizontalArrangement = Arrangement.SpaceBetween,
       verticalAlignment = Alignment.CenterVertically
     ) {
-      val tabs = listOf(
-        Triple("Edit", Icons.Default.Transform, 0),
-        Triple("Templates", Icons.Default.VideoLibrary, 1),
-        Triple("AI Lab", Icons.Default.AutoAwesome, 2),
-        Triple("Projects", Icons.Default.Folder, 3),
-        Triple("Me", Icons.Default.Person, 4)
-      )
+      Column(modifier = Modifier.weight(1f)) {
+        Text(text = project.title, color = CapCutTextPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Text(text = dateFormat.format(Date(project.lastModified)), color = CapCutTextSecondary, fontSize = 10.sp)
+      }
 
-      tabs.forEach { (label, icon, index) ->
-        val isSelected = selectedTab == index
-        Column(
-          modifier = Modifier
-            .weight(1f)
-            .clickable { onTabSelected(index) }
-            .padding(vertical = 4.dp)
-            .testTag("bottom_tab_$label"),
-          horizontalAlignment = Alignment.CenterHorizontally,
-          verticalArrangement = Arrangement.Center
+      Box {
+        IconButton(onClick = { menuExpanded = true }, modifier = Modifier.size(24.dp)) {
+          Icon(Icons.Default.MoreVert, contentDescription = "Options", tint = CapCutTextSecondary, modifier = Modifier.size(16.dp))
+        }
+        DropdownMenu(
+          expanded = menuExpanded,
+          onDismissRequest = { menuExpanded = false },
+          modifier = Modifier.background(CapCutSurface)
         ) {
-          Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = if (isSelected) Color.Black else Color(0xFF8E99A8),
-            modifier = Modifier.size(24.dp)
-          )
-          Spacer(modifier = Modifier.height(2.dp))
-          Text(
-            text = label,
-            color = if (isSelected) Color.Black else Color(0xFF8E99A8),
-            fontSize = 10.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+          DropdownMenuItem(
+            text = { Text("Delete Project", color = Color(0xFFFF4D4F), fontSize = 13.sp) },
+            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFFF4D4F)) },
+            onClick = {
+              menuExpanded = false
+              onDelete()
+            }
           )
         }
       }

@@ -43,6 +43,8 @@ enum class SubMenuType {
   CLIP_EDIT,
   SPEED,
   VOLUME,
+  TRANSITIONS,
+  VOICE_EFFECTS,
   AUDIO,
   TEXT,
   FILTERS,
@@ -51,15 +53,33 @@ enum class SubMenuType {
   EFFECTS
 }
 
+enum class TransitionType(val title: String) {
+  NONE("None"),
+  DISSOLVE("Dissolve"),
+  GLITCH("Glitch"),
+  FLASH_WHITE("Flash White"),
+  ZOOM_IN("Zoom In"),
+  SLIDE_LEFT("Slide Left"),
+  PULL_IN("Pull In"),
+  BLACK_FADE("Black Fade")
+}
+
 data class VideoClip(
   val id: String,
   val title: String,
   val startMs: Long,
   val endMs: Long,
   val originalDurationMs: Long,
-  @DrawableRes val thumbnailRes: Int,
+  @DrawableRes val thumbnailRes: Int = 0,
+  val uriString: String? = null,
+  val isVideo: Boolean = true,
   val speed: Float = 1.0f,
   val volume: Float = 1.0f,
+  val transitionAfter: TransitionType = TransitionType.NONE,
+  val transitionDurationMs: Long = 500L,
+  val voiceEffect: String = "Normal",
+  val isFrozen: Boolean = false,
+  val isReversed: Boolean = false,
   val isSelected: Boolean = false
 ) {
   val durationMs: Long get() = (endMs - startMs)
@@ -70,7 +90,8 @@ data class AudioTrackItem(
   val title: String,
   val startMs: Long,
   val endMs: Long,
-  val volume: Float = 1.0f
+  val volume: Float = 1.0f,
+  val isSfx: Boolean = false
 ) {
   val durationMs: Long get() = (endMs - startMs)
 }
@@ -79,7 +100,8 @@ data class TextTrackItem(
   val id: String,
   val text: String,
   val startMs: Long,
-  val endMs: Long
+  val endMs: Long,
+  val style: String = "TikTok Classic"
 )
 
 data class FilterItem(
@@ -90,11 +112,11 @@ data class FilterItem(
 )
 
 data class AdjustSettings(
-  val brightness: Float = 0f, // -50 to +50
-  val contrast: Float = 0f,   // -50 to +50
-  val saturation: Float = 0f, // -50 to +50
-  val sharpness: Float = 0f,  // 0 to 100
-  val vignette: Float = 0f    // 0 to 100
+  val brightness: Float = 0f,
+  val contrast: Float = 0f,
+  val saturation: Float = 0f,
+  val sharpness: Float = 0f,
+  val vignette: Float = 0f
 )
 
 enum class AspectRatioOption(val label: String, val ratio: Float, val displayTag: String) {
@@ -110,14 +132,4 @@ data class ResolutionSetting(
   val fps: Int = 30,
   val smartHdr: Boolean = true,
   val estimatedSizeMb: Float = 48.5f
-)
-
-data class CapCutProject(
-  val id: String,
-  val title: String,
-  val dateStr: String,
-  val sizeStr: String,
-  val durationStr: String,
-  @DrawableRes val thumbnailRes: Int,
-  val clipsCount: Int = 1
 )

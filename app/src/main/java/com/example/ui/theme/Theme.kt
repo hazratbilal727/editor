@@ -8,10 +8,14 @@ import androidx.compose.ui.graphics.Color
 private val CapCutColorScheme = darkColorScheme(
   primary = CapCutTeal,
   onPrimary = Color.Black,
-  primaryContainer = CapCutSurfaceVariant,
-  onPrimaryContainer = CapCutTextPrimary,
+  primaryContainer = CapCutSurfaceElevated,
+  onPrimaryContainer = Color.White,
   secondary = CapCutPurple,
   onSecondary = Color.White,
+  secondaryContainer = CapCutSurfaceVariant,
+  onSecondaryContainer = Color.White,
+  tertiary = CapCutGold,
+  onTertiary = Color.Black,
   background = CapCutBackground,
   onBackground = CapCutTextPrimary,
   surface = CapCutSurface,
@@ -22,11 +26,20 @@ private val CapCutColorScheme = darkColorScheme(
 
 @Composable
 fun CapCutTheme(
-  content: @Composable () -> Unit,
+  content: @Composable () -> Unit
 ) {
   MaterialTheme(
     colorScheme = CapCutColorScheme,
     typography = Typography,
     content = content
   )
+}
+
+@Composable
+fun MyApplicationTheme(
+  darkTheme: Boolean = true,
+  dynamicColor: Boolean = false,
+  content: @Composable () -> Unit
+) {
+  CapCutTheme(content = content)
 }
